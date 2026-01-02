@@ -1,0 +1,10 @@
+[workspace]
+members = [
+  "core",
+  "loader",
+  "render",
+  "input",
+  "lua",
+  "server",
+]
+resolver = "2"
