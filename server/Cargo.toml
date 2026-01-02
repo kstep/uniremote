@@ -5,3 +5,15 @@ edition = "2024"
 license = "MIT"
 
 [dependencies]
+uniremote-core = { path = "../core" }
+uniremote-loader = { path = "../loader" }
+uniremote-render = { path = "../render" }
+uniremote-lua = { path = "../lua" }
+
+anyhow.workspace = true
+axum.workspace = true
+tokio.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+tracing.workspace = true
+tracing-subscriber.workspace = true

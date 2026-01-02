@@ -5,3 +5,8 @@ edition = "2024"
 license = "MIT"
 
 [dependencies]
+uniremote-core = { path = "../core" }
+serde.workspace = true
+serde-java-properties.workspace = true
+quick-xml.workspace = true
+xdg.workspace = true
