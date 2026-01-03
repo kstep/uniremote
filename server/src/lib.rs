@@ -24,7 +24,9 @@ pub async fn run(remotes: HashMap<RemoteId, Remote>) -> anyhow::Result<()> {
         .await
         .context("failed to bind to lan port")?;
 
-    tracing::info!("server listening on {}", listener.local_addr()?);
+    let local_addr = listener.local_addr()?;
+    tracing::info!("server listening on {local_addr}");
+    print_qr_code(local_addr);
 
     axum::serve(listener, app).await?;
 
@@ -47,4 +49,24 @@ async fn bind_lan_port(port_range: Range<u16>) -> Option<TcpListener> {
     }
 
     None
+}
+
+pub fn print_qr_code(addr: SocketAddr) {
+    let url = format!("http://{}", addr);
+
+    match qrcode::QrCode::new(&url) {
+        Ok(code) => {
+            let string = code
+                .render::<char>()
+                .quiet_zone(false)
+                .module_dimensions(2, 1)
+                .build();
+            println!("\n{}\n", string);
+            println!("Scan QR code or visit: {}", url);
+        }
+        Err(error) => {
+            tracing::warn!("failed to generate qr code: {error}");
+            println!("Visit: {}", url);
+        }
+    }
 }
