@@ -5,3 +5,6 @@ edition = "2024"
 license = "MIT"
 
 [dependencies]
+serde.workspace = true
+thiserror.workspace = true
+compact_str = { version = "0.9", features = ["serde"] }

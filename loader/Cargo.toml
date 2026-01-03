@@ -6,7 +6,10 @@ license = "MIT"
 
 [dependencies]
 uniremote-core = { path = "../core" }
+anyhow.workspace = true
 serde.workspace = true
 serde-java-properties.workspace = true
 quick-xml.workspace = true
 xdg.workspace = true
+tracing.workspace = true
+walkdir = "2"

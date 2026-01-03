@@ -10,6 +10,7 @@ uniremote-loader = { path = "../loader" }
 uniremote-render = { path = "../render" }
 uniremote-lua = { path = "../lua" }
 
+dotenvy.workspace = true
 anyhow.workspace = true
 axum.workspace = true
 tokio.workspace = true
