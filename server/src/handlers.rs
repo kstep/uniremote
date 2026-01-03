@@ -2,7 +2,8 @@ use std::sync::Arc;
 
 use axum::{
     Json,
-    extract::State,
+    extract::{Path, State},
+    http::StatusCode,
     response::{Html, IntoResponse, Response},
 };
 use axum_extra::TypedHeader;
@@ -11,6 +12,7 @@ use mediatype::{
     MediaType,
     names::{HTML, TEXT},
 };
+use uniremote_core::RemoteId;
 
 use crate::AppState;
 
@@ -75,4 +77,15 @@ fn list_remotes_json(state: &AppState) -> Response {
         .collect();
 
     Json(serde_json::json!({ "remotes": remotes })).into_response()
+}
+
+pub async fn get_remote(
+    Path(remote_id): Path<RemoteId>,
+    State(state): State<Arc<AppState>>,
+) -> Result<Html<String>, StatusCode> {
+    let remote = state.remotes.get(&remote_id).ok_or(StatusCode::NOT_FOUND)?;
+    let mut output = String::from(HTML_HEADER);
+    uniremote_render::render_layout(&mut output, &remote.layout);
+    output.push_str(HTML_FOOTER);
+    Ok(Html(output))
 }

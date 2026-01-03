@@ -18,6 +18,7 @@ pub async fn run(remotes: HashMap<RemoteId, Remote>) -> anyhow::Result<()> {
 
     let app = Router::new()
         .route("/", get(handlers::list_remotes))
+        .route("/r/{id}", get(handlers::get_remote))
         .with_state(state);
 
     let listener = bind_lan_port(LISTEN_PORT_RANGE)

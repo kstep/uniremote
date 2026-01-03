@@ -6,3 +6,4 @@ license = "MIT"
 
 [dependencies]
 uniremote-core = { path = "../core" }
+tracing.workspace = true

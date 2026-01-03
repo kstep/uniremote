@@ -45,7 +45,7 @@ impl TryFrom<&Path> for RemoteId {
             return Err(RemoteIdError::InvalidId);
         }
 
-        Ok(Self(CompactString::from(id)))
+        Ok(Self(id.into()))
     }
 }
 

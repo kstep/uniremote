@@ -54,5 +54,12 @@ fn load_remote(base_path: &Path, path: &Path) -> anyhow::Result<Option<(RemoteId
         }
     };
 
-    Ok(Some((remote_id, Remote { meta, layout })))
+    Ok(Some((
+        remote_id,
+        Remote {
+            path: path.to_path_buf(),
+            meta,
+            layout,
+        },
+    )))
 }
