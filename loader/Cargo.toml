@@ -8,8 +8,9 @@ license = "MIT"
 uniremote-core = { path = "../core" }
 anyhow.workspace = true
 serde.workspace = true
-serde-java-properties.workspace = true
-quick-xml.workspace = true
-xdg.workspace = true
 tracing.workspace = true
+
 walkdir = "2"
+xdg = "3.0"
+serde-java-properties = "0.2"
+quick-xml = { version = "0.38", features = ["serialize"] }

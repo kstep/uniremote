@@ -16,6 +16,18 @@ use crate::AppState;
 
 const CONTENT_TYPE_HTML: MediaType = MediaType::from_parts(TEXT, HTML, None, &[]);
 
+static HTML_HEADER: &str = r#"<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>UniRemote</title>
+</head>
+<body>
+"#;
+
+static HTML_FOOTER: &str = r#"</body></html>"#;
+
 pub async fn list_remotes(
     State(state): State<Arc<AppState>>,
     accept: Option<TypedHeader<Accept>>,
@@ -34,33 +46,18 @@ pub async fn list_remotes(
 }
 
 fn list_remotes_html(state: &AppState) -> Response {
-    let mut html = String::from(
-        r#"<!DOCTYPE html>
-<html>
-<head>
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>UniRemote</title>
-</head>
-<body>
-    <h1>Available Remotes</h1>
-    <ul>
-"#,
-    );
+    let mut html = String::from(HTML_HEADER);
+    html.push_str(r#"<h1>Available Remotes</h1><ul>"#);
 
     for (id, remote) in &state.remotes {
         html.push_str(&format!(
-            r#"        <li><a href="/r/{id}">{}</a></li>
-"#,
+            r#"<li><a href="/r/{id}">{}</a></li>"#,
             remote.meta.name
         ));
     }
 
-    html.push_str(
-        r#"    </ul>
-</body>
-</html>"#,
-    );
+    html.push_str("</ul>");
+    html.push_str(HTML_FOOTER);
 
     Html(html).into_response()
 }
