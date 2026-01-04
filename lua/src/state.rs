@@ -1,19 +1,22 @@
 use std::{collections::HashMap, path::Path};
 
+use anyhow::Context;
 use mlua::{Function, IntoLua, Lua, LuaSerdeExt, MultiValue, Table};
 use uniremote_core::ActionId;
+use uniremote_input::{InputBackend, UInputBackend};
 
-pub struct LuaState {
+pub struct LuaState<T> {
     lua: Lua,
+    backend: T,
 }
 
-impl LuaState {
-    pub fn empty() -> Self {
+impl<T: InputBackend> LuaState<T> {
+    pub fn empty(backend: T) -> Self {
         let lua = Lua::new();
-        LuaState { lua }
+        LuaState { lua, backend }
     }
 
-    pub fn new(script: &Path) -> anyhow::Result<Self> {
+    pub fn new(script: &Path, backend: T) -> anyhow::Result<Self> {
         let lua = Lua::new();
 
         init_globals(&lua)?;
@@ -21,7 +24,8 @@ impl LuaState {
 
         let script_content = std::fs::read(script)?;
         lua.load(script_content).exec()?;
-        Ok(LuaState { lua })
+
+        Ok(LuaState { lua, backend })
     }
 
     fn actions(&self) -> anyhow::Result<Table> {

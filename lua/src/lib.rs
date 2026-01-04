@@ -3,14 +3,15 @@ use std::collections::HashMap;
 pub use state::LuaState;
 use tokio::sync::mpsc::Receiver;
 use uniremote_core::{CallActionRequest, RemoteId};
+use uniremote_input::InputBackend;
 
 pub mod keyboard;
 pub mod mouse;
 pub mod state;
 
-pub async fn run(
+pub async fn run<T: InputBackend>(
     mut worker_rx: Receiver<(RemoteId, CallActionRequest)>,
-    states: HashMap<RemoteId, state::LuaState>,
+    states: HashMap<RemoteId, state::LuaState<T>>,
 ) {
     while let Some((remote_id, request)) = worker_rx.recv().await {
         tracing::info!("received action request {request:?} for remote id: {remote_id}");
