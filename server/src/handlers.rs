@@ -24,6 +24,7 @@ static HTML_HEADER: &str = r#"<!DOCTYPE html>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>UniRemote</title>
+    <script src="/assets/frontend.js"></script>
 </head>
 <body>
 "#;
