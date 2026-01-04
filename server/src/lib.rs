@@ -1,7 +1,10 @@
 use std::{collections::HashMap, net::SocketAddr, ops::Range, sync::Arc};
 
 use anyhow::Context;
-use axum::{Router, routing::get};
+use axum::{
+    Router,
+    routing::{get, post},
+};
 use tokio::net::TcpListener;
 use tower_http::services::ServeDir;
 use uniremote_core::{Remote, RemoteId};
@@ -21,6 +24,7 @@ pub async fn run(remotes: HashMap<RemoteId, Remote>) -> anyhow::Result<()> {
     let app = Router::new()
         .route("/", get(handlers::list_remotes))
         .route("/r/{id}", get(handlers::get_remote))
+        .route("/api/r/{id}/call", post(handlers::call_remote_action))
         .nest_service("/assets", ServeDir::new(ASSETS_DIR))
         .with_state(state);
 
