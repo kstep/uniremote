@@ -3,11 +3,13 @@ use std::{collections::HashMap, net::SocketAddr, ops::Range, sync::Arc};
 use anyhow::Context;
 use axum::{Router, routing::get};
 use tokio::net::TcpListener;
+use tower_http::services::ServeDir;
 use uniremote_core::{Remote, RemoteId};
 
 mod handlers;
 
 const LISTEN_PORT_RANGE: Range<u16> = 8000..8101;
+const ASSETS_DIR: &str = "server/assets";
 
 struct AppState {
     remotes: HashMap<RemoteId, Remote>,
@@ -19,6 +21,7 @@ pub async fn run(remotes: HashMap<RemoteId, Remote>) -> anyhow::Result<()> {
     let app = Router::new()
         .route("/", get(handlers::list_remotes))
         .route("/r/{id}", get(handlers::get_remote))
+        .nest_service("/assets", ServeDir::new(ASSETS_DIR))
         .with_state(state);
 
     let listener = bind_lan_port(LISTEN_PORT_RANGE)
