@@ -18,13 +18,17 @@ fn move_to(_lua: &Lua, (x, y): (u32, u32)) -> mlua::Result<()> {
     Ok(())
 }
 
-fn move_by(_lua: &Lua, (dx, dy): (i32, i32)) -> mlua::Result<()> {
-    tracing::info!("moving mouse by: ({}, {})", dx, dy);
+fn move_by(lua: &Lua, (dx, dy): (i32, i32)) -> mlua::Result<()> {
+    let backend = get_input_backend(lua);
+    tracing::info!("moving mouse by: ({dx}, {dy})");
+    backend.mouse_move(dx, dy).map_err(mlua::Error::external)?;
     Ok(())
 }
 
-fn move_raw(_lua: &Lua, (dx, dy): (i32, i32)) -> mlua::Result<()> {
-    tracing::info!("moving mouse raw by: ({}, {})", dx, dy);
+fn move_raw(lua: &Lua, (dx, dy): (i32, i32)) -> mlua::Result<()> {
+    let backend = get_input_backend(lua);
+    tracing::info!("moving mouse raw by: ({dx}, {dy})");
+    backend.mouse_move(dx, dy).map_err(mlua::Error::external)?;
     Ok(())
 }
 
