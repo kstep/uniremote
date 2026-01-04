@@ -1,6 +1,6 @@
 use serde::Deserialize;
 
-use crate::id::{EventHanlder, LayoutId};
+use crate::id::{ActionId, LayoutId};
 
 #[derive(Default, Debug, Clone, Deserialize)]
 #[serde(rename = "layout")]
@@ -10,11 +10,11 @@ pub struct Layout {
     #[serde(default, rename = "@scroll")]
     pub scroll: Scroll,
     #[serde(default, rename = "@onlaunch", alias = "@onLaunch")]
-    pub onlaunch: Option<EventHanlder>,
+    pub onlaunch: Option<ActionId>,
     #[serde(default, rename = "@onvolumedown", alias = "@onVolumeDown")]
-    pub onvolumedown: Option<EventHanlder>,
+    pub onvolumedown: Option<ActionId>,
     #[serde(default, rename = "@onvolumeup", alias = "@onVolumeUp")]
-    pub onvolumeup: Option<EventHanlder>,
+    pub onvolumeup: Option<ActionId>,
     #[serde(default, rename = "$value")]
     pub children: Vec<Widget>,
 
@@ -122,13 +122,13 @@ pub struct Label {
     #[serde(default, rename = "@image")]
     pub image: Option<String>,
     #[serde(default, rename = "@ontap", alias = "@onTap")]
-    pub ontap: Option<EventHanlder>,
+    pub ontap: Option<ActionId>,
     #[serde(default, rename = "@onhold", alias = "@onHold")]
-    pub onhold: Option<EventHanlder>,
+    pub onhold: Option<ActionId>,
     #[serde(default, rename = "@onup", alias = "@onUp")]
-    pub onup: Option<EventHanlder>,
+    pub onup: Option<ActionId>,
     #[serde(default, rename = "@ondown", alias = "@onDown")]
-    pub ondown: Option<EventHanlder>,
+    pub ondown: Option<ActionId>,
 
     #[serde(default, rename = "@color")]
     pub color: Option<String>,
@@ -152,13 +152,13 @@ pub struct Button {
     #[serde(default, rename = "@text")]
     pub text: Option<String>,
     #[serde(default, rename = "@ontap", alias = "@onTap")]
-    pub ontap: Option<EventHanlder>,
+    pub ontap: Option<ActionId>,
     #[serde(default, rename = "@onhold", alias = "@onHold")]
-    pub onhold: Option<EventHanlder>,
+    pub onhold: Option<ActionId>,
     #[serde(default, rename = "@onup", alias = "@onUp")]
-    pub onup: Option<EventHanlder>,
+    pub onup: Option<ActionId>,
     #[serde(default, rename = "@ondown", alias = "@onDown")]
-    pub ondown: Option<EventHanlder>,
+    pub ondown: Option<ActionId>,
     #[serde(default, rename = "@textalign")]
     pub textalign: TextAlign,
     #[serde(default, rename = "@icon")]
@@ -194,13 +194,13 @@ pub struct Slider {
     #[serde(default = "default_progressmax", rename = "@progressmax")]
     pub progressmax: usize,
     #[serde(default, rename = "@onchange", alias = "@onChange")]
-    pub onchange: Option<EventHanlder>,
+    pub onchange: Option<ActionId>,
     #[serde(default, rename = "@ondone", alias = "@onDone")]
-    pub ondone: Option<EventHanlder>,
+    pub ondone: Option<ActionId>,
     #[serde(default, rename = "@ondown", alias = "@onDown")]
-    pub ondown: Option<EventHanlder>,
+    pub ondown: Option<ActionId>,
     #[serde(default, rename = "@onup", alias = "@onUp")]
-    pub onup: Option<EventHanlder>,
+    pub onup: Option<ActionId>,
 
     #[serde(default, rename = "@color")]
     pub color: Option<String>,
@@ -234,9 +234,9 @@ pub struct Text {
     #[serde(default, rename = "@multiline")]
     pub multiline: bool,
     #[serde(default, rename = "@onchange", alias = "@onChange")]
-    pub onchange: Option<EventHanlder>,
+    pub onchange: Option<ActionId>,
     #[serde(default, rename = "@ondone", alias = "@onDone")]
-    pub ondone: Option<EventHanlder>,
+    pub ondone: Option<ActionId>,
 
     #[serde(default, rename = "@color")]
     pub color: Option<String>,
@@ -268,15 +268,15 @@ pub struct Toggle {
     #[serde(default, rename = "@image")]
     pub image: Option<String>,
     #[serde(default, rename = "@onchange", alias = "@onChange")]
-    pub onchange: Option<EventHanlder>,
+    pub onchange: Option<ActionId>,
     #[serde(default, rename = "@ontap", alias = "@onTap")]
-    pub ontap: Option<EventHanlder>,
+    pub ontap: Option<ActionId>,
     #[serde(default, rename = "@onhold", alias = "@onHold")]
-    pub onhold: Option<EventHanlder>,
+    pub onhold: Option<ActionId>,
     #[serde(default, rename = "@onup", alias = "@onUp")]
-    pub onup: Option<EventHanlder>,
+    pub onup: Option<ActionId>,
     #[serde(default, rename = "@ondown", alias = "@onDown")]
-    pub ondown: Option<EventHanlder>,
+    pub ondown: Option<ActionId>,
 
     #[serde(default, rename = "@color")]
     pub color: Option<String>,
@@ -300,7 +300,7 @@ pub struct Tabs {
     #[serde(default, rename = "@index")]
     pub index: usize,
     #[serde(default, rename = "@onchange", alias = "@onChange")]
-    pub onchange: Option<EventHanlder>,
+    pub onchange: Option<ActionId>,
     #[serde(default, rename = "$value")]
     pub tabs: Vec<Tab>,
 
@@ -378,25 +378,25 @@ pub struct Touch {
     #[serde(default, rename = "@image")]
     pub image: Option<String>,
     #[serde(default, rename = "@ontap", alias = "@onTap")]
-    pub ontap: Option<EventHanlder>,
+    pub ontap: Option<ActionId>,
     #[serde(default, rename = "@onhold", alias = "@onHold")]
-    pub onhold: Option<EventHanlder>,
+    pub onhold: Option<ActionId>,
     #[serde(default, rename = "@ondown", alias = "@onDown")]
-    pub ondown: Option<EventHanlder>,
+    pub ondown: Option<ActionId>,
     #[serde(default, rename = "@onup", alias = "@onUp")]
-    pub onup: Option<EventHanlder>,
+    pub onup: Option<ActionId>,
     #[serde(default, rename = "@ondoubletap", alias = "@onDoubleTap")]
-    pub ondoubletap: Option<EventHanlder>,
+    pub ondoubletap: Option<ActionId>,
     #[serde(default, rename = "@ontouchsize", alias = "@onTouchSize")]
-    pub ontouchsize: Option<EventHanlder>,
+    pub ontouchsize: Option<ActionId>,
     #[serde(default, rename = "@ontouchstart", alias = "@onTouchStart")]
-    pub ontouchstart: Option<EventHanlder>,
+    pub ontouchstart: Option<ActionId>,
     #[serde(default, rename = "@ontouchend", alias = "@onTouchEnd")]
-    pub ontouchend: Option<EventHanlder>,
+    pub ontouchend: Option<ActionId>,
     #[serde(default, rename = "@ontouchdelta", alias = "@onTouchDelta")]
-    pub ontouchdelta: Option<EventHanlder>,
+    pub ontouchdelta: Option<ActionId>,
     #[serde(default, rename = "@onmultitap", alias = "@onMultiTap")]
-    pub onmultitap: Option<EventHanlder>,
+    pub onmultitap: Option<ActionId>,
 
     #[serde(default, rename = "@color")]
     pub color: Option<String>,

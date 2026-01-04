@@ -4,7 +4,7 @@ pub mod meta;
 
 use std::{collections::HashMap, path::PathBuf};
 
-pub use id::{EventHanlder, RemoteId};
+pub use id::{ActionId, RemoteId};
 pub use layout::Layout;
 pub use meta::RemoteMeta;
 use serde::{Deserialize, Serialize};
@@ -18,7 +18,7 @@ pub struct Remote {
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct CallActionRequest {
-    pub handler: EventHanlder,
+    pub handler: ActionId,
     #[serde(default)]
     pub args: Option<HashMap<String, serde_json::Value>>,
 }

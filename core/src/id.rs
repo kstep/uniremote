@@ -97,15 +97,15 @@ impl Deref for LayoutId {
     Deserialize
 )]
 #[serde(transparent)]
-pub struct EventHanlder(CompactString);
+pub struct ActionId(CompactString);
 
-impl fmt::Display for EventHanlder {
+impl fmt::Display for ActionId {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "{}", self.0)
     }
 }
 
-impl Deref for EventHanlder {
+impl Deref for ActionId {
     type Target = str;
 
     fn deref(&self) -> &Self::Target {

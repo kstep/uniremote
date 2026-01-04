@@ -1,7 +1,7 @@
 use std::{collections::HashMap, path::Path};
 
-use mlua::{IntoLua, Lua, LuaSerdeExt, MultiValue};
-use uniremote_core::EventHanlder;
+use mlua::{Function, IntoLua, Lua, LuaSerdeExt, MultiValue, Table};
+use uniremote_core::ActionId;
 
 pub struct LuaState {
     lua: Lua,
@@ -16,6 +16,7 @@ impl LuaState {
     pub fn new(script: &Path) -> anyhow::Result<Self> {
         let lua = Lua::new();
 
+        init_globals(&lua)?;
         load_modules(&lua)?;
 
         let script_content = std::fs::read(script)?;
@@ -23,12 +24,24 @@ impl LuaState {
         Ok(LuaState { lua })
     }
 
+    fn actions(&self) -> anyhow::Result<Table> {
+        let globals = self.lua.globals();
+        let actions: Table = globals.get("actions")?;
+        Ok(actions)
+    }
+
+    fn action(&self, name: ActionId) -> anyhow::Result<Function> {
+        let actions = self.actions()?;
+        let function: Function = actions.get(&*name)?;
+        Ok(function)
+    }
+
     pub fn call_handler(
         &self,
-        handler: EventHanlder,
+        action_id: ActionId,
         args: Option<HashMap<String, serde_json::Value>>,
     ) -> anyhow::Result<()> {
-        let handler_fn: mlua::Function = self.lua.globals().get(&*handler)?;
+        let action_fn = self.action(action_id)?;
 
         if let Some(args_map) = args {
             let table = self.lua.create_table_with_capacity(0, args_map.len())?;
@@ -38,13 +51,21 @@ impl LuaState {
             }
 
             let args = MultiValue::from(vec![table.into_lua(&self.lua).unwrap()]);
-            handler_fn.call::<()>(args)?;
+            action_fn.call::<()>(args)?;
         } else {
-            handler_fn.call::<()>(())?;
+            action_fn.call::<()>(())?;
         }
 
         Ok(())
     }
+}
+
+fn init_globals(lua: &Lua) -> anyhow::Result<()> {
+    let globals = lua.globals();
+    globals.set("settings", lua.create_table()?)?;
+    globals.set("events", lua.create_table()?)?;
+    globals.set("actions", lua.create_table()?)?;
+    Ok(())
 }
 
 fn load_modules(lua: &Lua) -> anyhow::Result<()> {
