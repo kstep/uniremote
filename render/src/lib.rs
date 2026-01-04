@@ -1,7 +1,8 @@
 use uniremote_core::{
     Layout,
     layout::{
-        Button, Grid, Image, Item, Label, List, Row, Slider, Tab, Tabs, Text, Toggle, Touch, Widget,
+        Button, Grid, Image, Item, Label, List, Row, Slider, Tab, Tabs, Text, Theme, Toggle, Touch,
+        Widget,
     },
 };
 
@@ -17,10 +18,22 @@ macro_rules! render_handlers {
     };
 }
 
-pub fn render_layout(output: &mut String, layout: &Layout) {
-    tracing::info!("rendering layout: {layout:#?}");
+macro_rules! render_style {
+    ($output:ident, $widget:ident) => {
+        render_style(
+            $output,
+            &$widget.color,
+            &$widget.lightcolor,
+            &$widget.darkcolor,
+            &$widget.dark,
+            &$widget.light,
+        );
+    };
+}
 
+pub fn render_layout(output: &mut String, layout: &Layout) {
     output.push_str("<div class=\"layout\" ");
+    render_style!(output, layout);
     render_handlers!(output, layout, onlaunch, onvolumedown, onvolumeup);
     output.push('>');
 
@@ -51,6 +64,7 @@ fn render_widget(output: &mut String, widget: &Widget) {
 fn render_button(output: &mut String, button: &Button) {
     output.push_str("<button ");
 
+    render_style!(output, button);
     render_handlers!(output, button, ontap, onhold, ondown, onup);
 
     output.push('>');
@@ -93,6 +107,7 @@ fn render_external_image(output: &mut String, src: &str) {
 
 fn render_label(output: &mut String, label: &Label) {
     output.push_str("<div class=\"label\" ");
+    render_style!(output, label);
     render_handlers!(output, label, ontap, onhold, ondown, onup);
     output.push('>');
     if let Some(icon) = &label.icon {
@@ -125,7 +140,10 @@ fn render_slider(output: &mut String, slider: &Slider) {
         output.push_str("</label>");
     }
     output.push_str("<input type=\"range\" ");
+
+    render_style!(output, slider);
     render_handlers!(output, slider, onchange, ondone, ondown, onup);
+
     output.push_str("value=\"");
     output.push_str(&slider.progress.to_string());
     output.push_str("\" max=\"");
@@ -140,6 +158,7 @@ fn render_text(output: &mut String, text: &Text) {
     } else {
         output.push_str("<input type=\"text\" class=\"text\" ");
     }
+    render_style!(output, text);
     render_handlers!(output, text, onchange, ondone);
     if let Some(value) = &text.text {
         if text.multiline {
@@ -168,6 +187,7 @@ fn render_text(output: &mut String, text: &Text) {
 fn render_toggle(output: &mut String, toggle: &Toggle) {
     output.push_str("<label class=\"toggle\">");
     output.push_str("<input type=\"checkbox\" ");
+    render_style!(output, toggle);
     render_handlers!(output, toggle, onchange, ontap, onhold, ondown, onup);
     if toggle.checked {
         output.push_str("checked ");
@@ -189,6 +209,7 @@ fn render_toggle(output: &mut String, toggle: &Toggle) {
 
 fn render_touch(output: &mut String, touch: &Touch) {
     output.push_str("<div class=\"touch\" ");
+    render_style!(output, touch);
     render_handlers!(
         output,
         touch,
@@ -237,6 +258,7 @@ fn render_item(output: &mut String, item: &Item) {
 
 fn render_tabs(output: &mut String, tabs: &Tabs) {
     output.push_str("<div class=\"tabs\" ");
+    render_style!(output, tabs);
     render_handlers!(output, tabs, onchange);
     output.push('>');
     output.push_str("<div class=\"tab-headers\">");
@@ -274,4 +296,73 @@ fn render_tab(output: &mut String, tab: &Tab) {
 
 fn render_space(output: &mut String) {
     output.push_str("<div class=\"space\"></div>");
+}
+
+fn render_style(
+    output: &mut String,
+    color: &Option<String>,
+    lightcolor: &Option<String>,
+    darkcolor: &Option<String>,
+    dark: &Option<Theme>,
+    light: &Option<Theme>,
+) {
+    output.push_str("style=\"");
+    if let Some(color) = color {
+        output.push_str("--default-color:");
+        output.push_str(color);
+        output.push_str(";");
+    }
+
+    if let Some(color) = lightcolor {
+        output.push_str("--light-color:");
+        output.push_str(color);
+        output.push_str(";");
+    }
+
+    if let Some(color) = darkcolor {
+        output.push_str("--dark-color:");
+        output.push_str(color);
+        output.push_str(";");
+    }
+
+    if let Some(dark) = dark {
+        render_theme(output, "dark", dark);
+    }
+
+    if let Some(light) = light {
+        render_theme(output, "light", light);
+    }
+
+    output.push_str("\"");
+}
+
+fn render_theme(output: &mut String, name: &str, theme: &Theme) {
+    if let Some(color) = &theme.color {
+        output.push_str("--theme-");
+        output.push_str(name);
+        output.push_str("-default-color:");
+        output.push_str(color);
+        output.push_str(";");
+    }
+    if let Some(color) = &theme.active {
+        output.push_str("--theme-");
+        output.push_str(name);
+        output.push_str("-active-color:");
+        output.push_str(color);
+        output.push_str(";");
+    }
+    if let Some(color) = &theme.normal {
+        output.push_str("--theme-");
+        output.push_str(name);
+        output.push_str("-normal-color:");
+        output.push_str(color);
+        output.push_str(";");
+    }
+    if let Some(color) = &theme.focus {
+        output.push_str("--theme-");
+        output.push_str(name);
+        output.push_str("-focus-color:");
+        output.push_str(color);
+        output.push_str(";");
+    }
 }

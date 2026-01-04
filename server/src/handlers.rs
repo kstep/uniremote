@@ -25,6 +25,7 @@ static HTML_HEADER: &str = r#"<!DOCTYPE html>
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>UniRemote</title>
     <script src="/assets/frontend.js"></script>
+    <link rel="stylesheet" href="/assets/style.css">
 </head>
 <body>
 "#;
@@ -85,7 +86,14 @@ pub async fn get_remote(
     State(state): State<Arc<AppState>>,
 ) -> Result<Html<String>, StatusCode> {
     let remote = state.remotes.get(&remote_id).ok_or(StatusCode::NOT_FOUND)?;
+
     let mut output = String::from(HTML_HEADER);
+
+    output.push_str("<div class=\"backlink\"><a href=\"/\">&larr; Back to remotes</a></div>");
+    output.push_str("<h1>");
+    output.push_str(&remote.meta.name);
+    output.push_str("</h1>");
+
     uniremote_render::render_layout(&mut output, &remote.layout);
     output.push_str(HTML_FOOTER);
     Ok(Html(output))
@@ -98,12 +106,7 @@ pub async fn call_remote_action(
 ) -> Result<Json<serde_json::Value>, StatusCode> {
     let _remote = state.remotes.get(&remote_id).ok_or(StatusCode::NOT_FOUND)?;
 
-    // TODO: Enqueue action to worker thread
-    tracing::info!(
-        "call action '{}' on remote '{}'",
-        payload.handler,
-        remote_id
-    );
+    tracing::info!("call action '{}' on remote '{remote_id}'", payload.handler);
 
     state
         .worker_tx
