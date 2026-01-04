@@ -17,6 +17,17 @@ pub struct Layout {
     pub onvolumeup: Option<EventHanlder>,
     #[serde(default, rename = "$value")]
     pub children: Vec<Widget>,
+
+    #[serde(default, rename = "@color")]
+    pub color: Option<String>,
+    #[serde(default, rename = "@lightcolor")]
+    pub lightcolor: Option<String>,
+    #[serde(default, rename = "@darkcolor")]
+    pub darkcolor: Option<String>,
+    #[serde(default, rename = "@dark")]
+    pub dark: Option<Theme>,
+    #[serde(default, rename = "@light")]
+    pub light: Option<Theme>,
 }
 
 #[derive(Debug, Clone, Deserialize)]
@@ -118,6 +129,17 @@ pub struct Label {
     pub onup: Option<EventHanlder>,
     #[serde(default, rename = "@ondown")]
     pub ondown: Option<EventHanlder>,
+
+    #[serde(default, rename = "@color")]
+    pub color: Option<String>,
+    #[serde(default, rename = "@lightcolor")]
+    pub lightcolor: Option<String>,
+    #[serde(default, rename = "@darkcolor")]
+    pub darkcolor: Option<String>,
+    #[serde(default, rename = "@dark")]
+    pub dark: Option<Theme>,
+    #[serde(default, rename = "@light")]
+    pub light: Option<Theme>,
 }
 
 #[derive(Debug, Clone, Deserialize)]
@@ -145,6 +167,17 @@ pub struct Button {
     pub image: Option<String>,
     #[serde(default, rename = "@scale")]
     pub scale: Scale,
+
+    #[serde(default, rename = "@color")]
+    pub color: Option<String>,
+    #[serde(default, rename = "@lightcolor")]
+    pub lightcolor: Option<String>,
+    #[serde(default, rename = "@darkcolor")]
+    pub darkcolor: Option<String>,
+    #[serde(default, rename = "@dark")]
+    pub dark: Option<Theme>,
+    #[serde(default, rename = "@light")]
+    pub light: Option<Theme>,
 }
 
 #[derive(Debug, Clone, Deserialize)]
@@ -168,6 +201,17 @@ pub struct Slider {
     pub ondown: Option<EventHanlder>,
     #[serde(default, rename = "@onup")]
     pub onup: Option<EventHanlder>,
+
+    #[serde(default, rename = "@color")]
+    pub color: Option<String>,
+    #[serde(default, rename = "@lightcolor")]
+    pub lightcolor: Option<String>,
+    #[serde(default, rename = "@darkcolor")]
+    pub darkcolor: Option<String>,
+    #[serde(default, rename = "@dark")]
+    pub dark: Option<Theme>,
+    #[serde(default, rename = "@light")]
+    pub light: Option<Theme>,
 }
 
 fn default_progressmax() -> usize {
@@ -193,6 +237,17 @@ pub struct Text {
     pub onchange: Option<EventHanlder>,
     #[serde(default, rename = "@ondone")]
     pub ondone: Option<EventHanlder>,
+
+    #[serde(default, rename = "@color")]
+    pub color: Option<String>,
+    #[serde(default, rename = "@lightcolor")]
+    pub lightcolor: Option<String>,
+    #[serde(default, rename = "@darkcolor")]
+    pub darkcolor: Option<String>,
+    #[serde(default, rename = "@dark")]
+    pub dark: Option<Theme>,
+    #[serde(default, rename = "@light")]
+    pub light: Option<Theme>,
 }
 
 #[derive(Debug, Clone, Deserialize)]
@@ -222,6 +277,17 @@ pub struct Toggle {
     pub onup: Option<EventHanlder>,
     #[serde(default, rename = "@ondown")]
     pub ondown: Option<EventHanlder>,
+
+    #[serde(default, rename = "@color")]
+    pub color: Option<String>,
+    #[serde(default, rename = "@lightcolor")]
+    pub lightcolor: Option<String>,
+    #[serde(default, rename = "@darkcolor")]
+    pub darkcolor: Option<String>,
+    #[serde(default, rename = "@dark")]
+    pub dark: Option<Theme>,
+    #[serde(default, rename = "@light")]
+    pub light: Option<Theme>,
 }
 
 #[derive(Debug, Clone, Deserialize)]
@@ -237,6 +303,17 @@ pub struct Tabs {
     pub onchange: Option<EventHanlder>,
     #[serde(default, rename = "$value")]
     pub tabs: Vec<Tab>,
+
+    #[serde(default, rename = "@color")]
+    pub color: Option<String>,
+    #[serde(default, rename = "@lightcolor")]
+    pub lightcolor: Option<String>,
+    #[serde(default, rename = "@darkcolor")]
+    pub darkcolor: Option<String>,
+    #[serde(default, rename = "@dark")]
+    pub dark: Option<Theme>,
+    #[serde(default, rename = "@light")]
+    pub light: Option<Theme>,
 }
 
 #[derive(Debug, Clone, Deserialize)]
@@ -254,6 +331,17 @@ pub struct Tab {
     pub list: Option<List>,
     #[serde(default, rename = "$value")]
     pub children: Vec<Widget>,
+
+    #[serde(default, rename = "@color")]
+    pub color: Option<String>,
+    #[serde(default, rename = "@lightcolor")]
+    pub lightcolor: Option<String>,
+    #[serde(default, rename = "@darkcolor")]
+    pub darkcolor: Option<String>,
+    #[serde(default, rename = "@dark")]
+    pub dark: Option<Theme>,
+    #[serde(default, rename = "@light")]
+    pub light: Option<Theme>,
 }
 
 #[derive(Debug, Clone, Deserialize)]
@@ -265,6 +353,17 @@ pub struct Image {
     pub visibility: Visibility,
     #[serde(default, rename = "@image")]
     pub image: Option<String>,
+
+    #[serde(default, rename = "@color")]
+    pub color: Option<String>,
+    #[serde(default, rename = "@lightcolor")]
+    pub lightcolor: Option<String>,
+    #[serde(default, rename = "@darkcolor")]
+    pub darkcolor: Option<String>,
+    #[serde(default, rename = "@dark")]
+    pub dark: Option<Theme>,
+    #[serde(default, rename = "@light")]
+    pub light: Option<Theme>,
 }
 
 #[derive(Debug, Clone, Deserialize)]
@@ -298,6 +397,17 @@ pub struct Touch {
     pub ontouchdelta: Option<EventHanlder>,
     #[serde(default, rename = "@onmultitap")]
     pub onmultitap: Option<EventHanlder>,
+
+    #[serde(default, rename = "@color")]
+    pub color: Option<String>,
+    #[serde(default, rename = "@lightcolor")]
+    pub lightcolor: Option<String>,
+    #[serde(default, rename = "@darkcolor")]
+    pub darkcolor: Option<String>,
+    #[serde(default, rename = "@dark")]
+    pub dark: Option<Theme>,
+    #[serde(default, rename = "@light")]
+    pub light: Option<Theme>,
 }
 
 #[derive(Debug, Clone, Deserialize)]
@@ -309,6 +419,17 @@ pub struct List {
     pub visibility: Visibility,
     #[serde(default, rename = "$value")]
     pub items: Vec<Item>,
+
+    #[serde(default, rename = "@color")]
+    pub color: Option<String>,
+    #[serde(default, rename = "@lightcolor")]
+    pub lightcolor: Option<String>,
+    #[serde(default, rename = "@darkcolor")]
+    pub darkcolor: Option<String>,
+    #[serde(default, rename = "@dark")]
+    pub dark: Option<Theme>,
+    #[serde(default, rename = "@light")]
+    pub light: Option<Theme>,
 }
 
 #[derive(Debug, Clone, Deserialize)]
@@ -324,10 +445,7 @@ pub struct Item {
     pub icon: Option<String>,
     #[serde(default, rename = "@image")]
     pub image: Option<String>,
-}
 
-#[derive(Default, Debug, Clone, Deserialize)]
-pub struct Style {
     #[serde(default, rename = "@color")]
     pub color: Option<String>,
     #[serde(default, rename = "@lightcolor")]
