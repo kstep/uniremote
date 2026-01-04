@@ -157,6 +157,10 @@ impl UInputBackend {
 }
 
 impl InputBackend for UInputBackend {
+    fn is_key(&self, key: &str) -> bool {
+        self.key_map.contains_key(&key.to_lowercase())
+    }
+
     fn key_press(&self, key: &str) -> Result<(), InputError> {
         let key = self.get_key(key)?;
         self.emit_key(key, 1)

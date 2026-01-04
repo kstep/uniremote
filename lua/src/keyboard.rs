@@ -1,16 +1,29 @@
 use mlua::{Lua, Table, Variadic};
+use uniremote_input::InputBackend;
 
-fn press(_lua: &Lua, keys: Variadic<String>) -> mlua::Result<()> {
+use crate::get_input_backend;
+
+fn press(lua: &Lua, keys: Variadic<String>) -> mlua::Result<()> {
+    let backend = get_input_backend(lua);
+
     for key in keys.iter() {
         tracing::info!("pressing key: {key}");
+        backend.key_click(key).map_err(mlua::Error::external)?;
     }
 
     Ok(())
 }
 
-fn stroke(_lua: &Lua, keys: Variadic<String>) -> mlua::Result<()> {
+fn stroke(lua: &Lua, keys: Variadic<String>) -> mlua::Result<()> {
+    let backend = get_input_backend(lua);
+
     for key in keys.iter() {
         tracing::info!("stroking key: {key}");
+        backend.key_press(key).map_err(mlua::Error::external)?;
+    }
+
+    for key in keys.iter().rev() {
+        backend.key_release(key).map_err(mlua::Error::external)?;
     }
 
     Ok(())
@@ -18,19 +31,26 @@ fn stroke(_lua: &Lua, keys: Variadic<String>) -> mlua::Result<()> {
 
 fn text(_lua: &Lua, text: String) -> mlua::Result<()> {
     tracing::info!("typing text: {}", text);
+
     Ok(())
 }
 
-fn down(_lua: &Lua, keys: Variadic<String>) -> mlua::Result<()> {
+fn down(lua: &Lua, keys: Variadic<String>) -> mlua::Result<()> {
+    let backend = get_input_backend(lua);
+
     for key in keys.iter() {
         tracing::info!("key down: {key}");
+        backend.key_press(key).map_err(mlua::Error::external)?;
     }
     Ok(())
 }
 
-fn up(_lua: &Lua, keys: Variadic<String>) -> mlua::Result<()> {
+fn up(lua: &Lua, keys: Variadic<String>) -> mlua::Result<()> {
+    let backend = get_input_backend(lua);
+
     for key in keys.iter() {
         tracing::info!("key up: {key}");
+        backend.key_release(key).map_err(mlua::Error::external)?;
     }
     Ok(())
 }
@@ -41,12 +61,13 @@ fn character(_lua: &Lua, char: char) -> mlua::Result<()> {
 }
 
 fn is_modifier(_lua: &Lua, key: String) -> mlua::Result<bool> {
-    let modifiers = ["Shift", "Ctrl", "Alt", "Meta"];
+    let modifiers = ["shift", "ctrl", "alt", "meta"];
     Ok(modifiers.contains(&key.as_str()))
 }
 
-fn is_key(_lua: &Lua, _key: String) -> mlua::Result<bool> {
-    Ok(false)
+fn is_key(lua: &Lua, key: String) -> mlua::Result<bool> {
+    let backend = get_input_backend(lua);
+    Ok(backend.is_key(&key))
 }
 
 pub fn load(lua: &Lua, libs: &Table) -> anyhow::Result<()> {
