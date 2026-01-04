@@ -261,37 +261,31 @@ fn render_tabs(output: &mut String, tabs: &Tabs) {
     render_style!(output, tabs);
     render_handlers!(output, tabs, onchange);
     output.push('>');
-    output.push_str("<div class=\"tab-headers\">");
+
     for (i, tab) in tabs.tabs.iter().enumerate() {
-        output.push_str("<button class=\"tab-header");
-        if i == tabs.index {
-            output.push_str(" active");
-        }
-        output.push_str("\">");
-        if let Some(text) = &tab.text {
-            output.push_str(text);
-        }
-        output.push_str("</button>");
+        render_tab(output, tab, i == tabs.index);
     }
-    output.push_str("</div>");
-    output.push_str("<div class=\"tab-content\">");
-    if let Some(tab) = tabs.tabs.get(tabs.index) {
-        render_tab(output, tab);
-    }
-    output.push_str("</div>");
     output.push_str("</div>");
 }
 
-fn render_tab(output: &mut String, tab: &Tab) {
-    if let Some(grid) = &tab.grid {
-        render_grid(output, grid);
-    } else if let Some(list) = &tab.list {
-        render_list(output, list);
-    } else {
-        for widget in &tab.children {
-            render_widget(output, widget);
-        }
+fn render_tab(output: &mut String, tab: &Tab, is_active: bool) {
+    output.push_str("<div class=\"tab\"><input type=\"radio\" name=\"tabs\" ");
+    if is_active {
+        output.push_str("checked ");
     }
+    output.push_str("/>");
+
+    if let Some(text) = &tab.text {
+        output.push_str("<label class=\"tab-header\">");
+        output.push_str(text);
+        output.push_str("</label>");
+    }
+
+    output.push_str("<div class=\"tab-panel\">");
+    for widget in &tab.children {
+        render_widget(output, widget);
+    }
+    output.push_str("</div></div>");
 }
 
 fn render_space(output: &mut String) {

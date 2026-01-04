@@ -325,10 +325,6 @@ pub struct Tab {
     pub visibility: Visibility,
     #[serde(default, rename = "@text")]
     pub text: Option<String>,
-    #[serde(default)]
-    pub grid: Option<Grid>,
-    #[serde(default)]
-    pub list: Option<List>,
     #[serde(default, rename = "$value")]
     pub children: Vec<Widget>,
 
