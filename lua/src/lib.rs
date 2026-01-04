@@ -4,6 +4,8 @@ pub use state::LuaState;
 use tokio::sync::mpsc::Receiver;
 use uniremote_core::{CallActionRequest, RemoteId};
 
+pub mod keyboard;
+pub mod mouse;
 pub mod state;
 
 pub async fn run(

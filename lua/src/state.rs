@@ -15,6 +15,9 @@ impl LuaState {
 
     pub fn new(script: &Path) -> anyhow::Result<Self> {
         let lua = Lua::new();
+
+        load_modules(&lua)?;
+
         let script_content = std::fs::read(script)?;
         lua.load(script_content).exec()?;
         Ok(LuaState { lua })
@@ -42,4 +45,12 @@ impl LuaState {
 
         Ok(())
     }
+}
+
+fn load_modules(lua: &Lua) -> anyhow::Result<()> {
+    let libs = lua.create_table()?;
+    crate::keyboard::load(lua, &libs)?;
+    crate::mouse::load(lua, &libs)?;
+    lua.globals().set("libs", libs)?;
+    Ok(())
 }
