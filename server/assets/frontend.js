@@ -5,7 +5,7 @@ function getRemoteId() {
 }
 
 // Main API call function
-async function callRemoteAction(handler, args = {}) {
+async function callRemoteAction(action, args = []) {
     const remoteId = getRemoteId();
     if (!remoteId) {
         console.error('No remote ID found in URL');
@@ -19,7 +19,7 @@ async function callRemoteAction(handler, args = {}) {
                 'Content-Type': 'application/json',
             },
             body: JSON.stringify({
-                handler,
+                action,
                 args,
             }),
         });
@@ -70,13 +70,13 @@ const eventHandlers = {
     onchange: (element, handler) => {
         element.addEventListener('change', (e) => {
             const value = e.target.type === 'checkbox' ? e.target.checked : e.target.value;
-            callRemoteAction(handler, { value });
+            callRemoteAction(handler, [value]);
         });
     },
 
     ondone: (element, handler) => {
         element.addEventListener('blur', (e) => {
-            callRemoteAction(handler, { value: e.target.value });
+            callRemoteAction(handler, [e.target.value]);
         });
     },
 
@@ -95,7 +95,7 @@ const eventHandlers = {
     ontouchstart: (element, handler) => {
         element.addEventListener('touchstart', (e) => {
             const touch = e.touches[0];
-            callRemoteAction(handler, { x: touch.clientX, y: touch.clientY });
+            callRemoteAction(handler, [touch.clientX, touch.clientY]);
         });
     },
 
@@ -116,7 +116,7 @@ const eventHandlers = {
             const touch = e.touches[0];
             const deltaX = touch.clientX - startX;
             const deltaY = touch.clientY - startY;
-            callRemoteAction(handler, { x: deltaX, y: deltaY });
+            callRemoteAction(handler, [deltaX, deltaY]);
             startX = touch.clientX;
             startY = touch.clientY;
         });
@@ -130,7 +130,7 @@ const eventHandlers = {
             tapCount++;
             clearTimeout(tapTimer);
             tapTimer = setTimeout(() => {
-                callRemoteAction(handler, { count: tapCount });
+                callRemoteAction(handler, [tapCount]);
                 tapCount = 0;
             }, 300);
         });

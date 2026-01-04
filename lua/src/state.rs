@@ -1,6 +1,6 @@
-use std::{collections::HashMap, path::Path};
+use std::path::Path;
 
-use mlua::{Function, IntoLua, Lua, LuaSerdeExt, MaybeSend, MultiValue, Table};
+use mlua::{Function, Lua, LuaSerdeExt, MaybeSend, MultiValue, Table};
 use uniremote_core::ActionId;
 
 pub struct LuaState {
@@ -41,21 +41,20 @@ impl LuaState {
         Ok(function)
     }
 
-    pub fn call_handler(
+    pub fn call_action(
         &self,
         action_id: ActionId,
-        args: Option<HashMap<String, serde_json::Value>>,
+        args: Option<Vec<serde_json::Value>>,
     ) -> anyhow::Result<()> {
         let action_fn = self.action(action_id)?;
 
         if let Some(args_map) = args {
-            let table = self.lua.create_table_with_capacity(0, args_map.len())?;
-            for (key, value) in args_map {
-                let lua_value = self.lua.to_value(&value)?;
-                table.set(key, lua_value)?;
-            }
-
-            let args = MultiValue::from(vec![table.into_lua(&self.lua).unwrap()]);
+            let args = MultiValue::from(
+                args_map
+                    .iter()
+                    .map(|v| self.lua.to_value(v))
+                    .collect::<Result<Vec<_>, _>>()?,
+            );
             action_fn.call::<()>(args)?;
         } else {
             action_fn.call::<()>(())?;

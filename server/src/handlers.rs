@@ -106,7 +106,7 @@ pub async fn call_remote_action(
 ) -> Result<Json<serde_json::Value>, StatusCode> {
     let _remote = state.remotes.get(&remote_id).ok_or(StatusCode::NOT_FOUND)?;
 
-    tracing::info!("call action '{}' on remote '{remote_id}'", payload.handler);
+    tracing::info!("call action '{}' on remote '{remote_id}'", payload.action);
 
     state
         .worker_tx

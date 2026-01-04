@@ -2,7 +2,7 @@ pub mod id;
 pub mod layout;
 pub mod meta;
 
-use std::{collections::HashMap, path::PathBuf};
+use std::path::PathBuf;
 
 pub use id::{ActionId, RemoteId};
 pub use layout::Layout;
@@ -18,7 +18,7 @@ pub struct Remote {
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct CallActionRequest {
-    pub handler: ActionId,
+    pub action: ActionId,
     #[serde(default)]
-    pub args: Option<HashMap<String, serde_json::Value>>,
+    pub args: Option<Vec<serde_json::Value>>,
 }

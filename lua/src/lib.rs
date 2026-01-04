@@ -16,7 +16,7 @@ pub async fn run(
     while let Some((remote_id, request)) = worker_rx.recv().await {
         tracing::info!("received action request {request:?} for remote id: {remote_id}");
         if let Some(lua_state) = states.get(&remote_id) {
-            if let Err(error) = lua_state.call_handler(request.handler, request.args) {
+            if let Err(error) = lua_state.call_action(request.action, request.args) {
                 tracing::error!("failed to handle action request: {error:#}");
             }
         } else {
