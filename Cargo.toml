@@ -4,7 +4,7 @@ resolver = "2"
 
 [workspace.dependencies]
 tokio = { version = "1", features = ["full"] }
-mlua = { version = "0.11", features = ["lua54", "vendored", "send"] }
+mlua = { version = "0.11", features = ["lua54", "vendored", "send", "serde"] }
 tracing = "0.1"
 tracing-subscriber = "0.3"
 anyhow = "1.0"

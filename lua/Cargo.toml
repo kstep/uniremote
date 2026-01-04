@@ -8,4 +8,7 @@ license = "MIT"
 uniremote-core = { path = "../core" }
 uniremote-input = { path = "../input" }
 mlua.workspace = true
+anyhow.workspace = true
+serde_json.workspace = true
 tokio.workspace = true
+tracing.workspace = true

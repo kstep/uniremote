@@ -12,8 +12,7 @@ use mediatype::{
     MediaType,
     names::{HTML, TEXT},
 };
-use serde::Deserialize;
-use uniremote_core::RemoteId;
+use uniremote_core::{CallActionRequest, RemoteId};
 
 use crate::AppState;
 
@@ -92,12 +91,6 @@ pub async fn get_remote(
     Ok(Html(output))
 }
 
-#[derive(Deserialize)]
-pub struct CallActionRequest {
-    handler: String,
-    args: serde_json::Value,
-}
-
 pub async fn call_remote_action(
     Path(remote_id): Path<RemoteId>,
     State(state): State<Arc<AppState>>,
@@ -112,8 +105,13 @@ pub async fn call_remote_action(
         remote_id
     );
 
+    state
+        .worker_tx
+        .send((remote_id, payload))
+        .await
+        .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
+
     Ok(Json(serde_json::json!({
         "status": "pending",
-        "handler": payload.handler,
     })))
 }

@@ -5,9 +5,9 @@ use axum::{
     Router,
     routing::{get, post},
 };
-use tokio::net::TcpListener;
+use tokio::{net::TcpListener, sync::mpsc::Sender};
 use tower_http::services::ServeDir;
-use uniremote_core::{Remote, RemoteId};
+use uniremote_core::{CallActionRequest, Remote, RemoteId};
 
 mod handlers;
 
@@ -15,11 +15,15 @@ const LISTEN_PORT_RANGE: Range<u16> = 8000..8101;
 const ASSETS_DIR: &str = "server/assets";
 
 struct AppState {
+    worker_tx: Sender<(RemoteId, CallActionRequest)>,
     remotes: HashMap<RemoteId, Remote>,
 }
 
-pub async fn run(remotes: HashMap<RemoteId, Remote>) -> anyhow::Result<()> {
-    let state = Arc::new(AppState { remotes });
+pub async fn run(
+    worker_tx: Sender<(RemoteId, CallActionRequest)>,
+    remotes: HashMap<RemoteId, Remote>,
+) -> anyhow::Result<()> {
+    let state = Arc::new(AppState { worker_tx, remotes });
 
     let app = Router::new()
         .route("/", get(handlers::list_remotes))
