@@ -65,58 +65,112 @@ impl UInputBackend {
         let mut map = HashMap::new();
 
         // Letters
-        for c in 'a'..='z' {
-            let key_code = KeyCode::KEY_A.code() + (c as u16 - 'a' as u16);
-            let key = KeyCode::new(key_code);
-            map.insert(c.to_string(), key);
-            map.insert(c.to_uppercase().to_string(), key);
-        }
+        map.insert("a".to_string(), KeyCode::KEY_A);
+        map.insert("b".to_string(), KeyCode::KEY_B);
+        map.insert("c".to_string(), KeyCode::KEY_C);
+        map.insert("d".to_string(), KeyCode::KEY_D);
+        map.insert("e".to_string(), KeyCode::KEY_E);
+        map.insert("f".to_string(), KeyCode::KEY_F);
+        map.insert("g".to_string(), KeyCode::KEY_G);
+        map.insert("h".to_string(), KeyCode::KEY_H);
+        map.insert("i".to_string(), KeyCode::KEY_I);
+        map.insert("j".to_string(), KeyCode::KEY_J);
+        map.insert("k".to_string(), KeyCode::KEY_K);
+        map.insert("l".to_string(), KeyCode::KEY_L);
+        map.insert("m".to_string(), KeyCode::KEY_M);
+        map.insert("n".to_string(), KeyCode::KEY_N);
+        map.insert("o".to_string(), KeyCode::KEY_O);
+        map.insert("p".to_string(), KeyCode::KEY_P);
+        map.insert("q".to_string(), KeyCode::KEY_Q);
+        map.insert("r".to_string(), KeyCode::KEY_R);
+        map.insert("s".to_string(), KeyCode::KEY_S);
+        map.insert("t".to_string(), KeyCode::KEY_T);
+        map.insert("u".to_string(), KeyCode::KEY_U);
+        map.insert("v".to_string(), KeyCode::KEY_V);
+        map.insert("w".to_string(), KeyCode::KEY_W);
+        map.insert("x".to_string(), KeyCode::KEY_X);
+        map.insert("y".to_string(), KeyCode::KEY_Y);
+        map.insert("z".to_string(), KeyCode::KEY_Z);
 
         // Numbers
-        for n in 0..=9 {
-            let key_code = KeyCode::KEY_1.code() + n - 1;
-            let key = KeyCode::new(if n == 0 {
-                KeyCode::KEY_0.code()
-            } else {
-                key_code
-            });
-            map.insert(n.to_string(), key);
-        }
+        map.insert("0".to_string(), KeyCode::KEY_0);
+        map.insert("1".to_string(), KeyCode::KEY_1);
+        map.insert("2".to_string(), KeyCode::KEY_2);
+        map.insert("3".to_string(), KeyCode::KEY_3);
+        map.insert("4".to_string(), KeyCode::KEY_4);
+        map.insert("5".to_string(), KeyCode::KEY_5);
+        map.insert("6".to_string(), KeyCode::KEY_6);
+        map.insert("7".to_string(), KeyCode::KEY_7);
+        map.insert("8".to_string(), KeyCode::KEY_8);
+        map.insert("9".to_string(), KeyCode::KEY_9);
 
         // Common keys
         map.insert("space".to_string(), KeyCode::KEY_SPACE);
         map.insert("enter".to_string(), KeyCode::KEY_ENTER);
         map.insert("return".to_string(), KeyCode::KEY_ENTER);
-        map.insert("backspace".to_string(), KeyCode::KEY_BACKSPACE);
         map.insert("tab".to_string(), KeyCode::KEY_TAB);
         map.insert("escape".to_string(), KeyCode::KEY_ESC);
         map.insert("esc".to_string(), KeyCode::KEY_ESC);
+        map.insert("menu".to_string(), KeyCode::KEY_MENU);
+        map.insert("backspace".to_string(), KeyCode::KEY_BACKSPACE);
+        map.insert("back".to_string(), KeyCode::KEY_BACKSPACE);
+        map.insert("insert".to_string(), KeyCode::KEY_INSERT);
+        map.insert("delete".to_string(), KeyCode::KEY_DELETE);
 
         // Arrow keys
         map.insert("up".to_string(), KeyCode::KEY_UP);
         map.insert("down".to_string(), KeyCode::KEY_DOWN);
         map.insert("left".to_string(), KeyCode::KEY_LEFT);
         map.insert("right".to_string(), KeyCode::KEY_RIGHT);
+        map.insert("pageup".to_string(), KeyCode::KEY_PAGEUP);
+        map.insert("pagedown".to_string(), KeyCode::KEY_PAGEDOWN);
+        map.insert("scrollup".to_string(), KeyCode::KEY_SCROLLUP);
+        map.insert("scrolldown".to_string(), KeyCode::KEY_SCROLLDOWN);
+        map.insert("home".to_string(), KeyCode::KEY_HOME);
+        map.insert("end".to_string(), KeyCode::KEY_END);
 
         // Modifiers
         map.insert("shift".to_string(), KeyCode::KEY_LEFTSHIFT);
         map.insert("ctrl".to_string(), KeyCode::KEY_LEFTCTRL);
         map.insert("control".to_string(), KeyCode::KEY_LEFTCTRL);
         map.insert("alt".to_string(), KeyCode::KEY_LEFTALT);
+        map.insert("lalt".to_string(), KeyCode::KEY_LEFTALT);
+        map.insert("ralt".to_string(), KeyCode::KEY_RIGHTALT);
         map.insert("super".to_string(), KeyCode::KEY_LEFTMETA);
+        map.insert("lsuper".to_string(), KeyCode::KEY_LEFTMETA);
+        map.insert("rsuper".to_string(), KeyCode::KEY_RIGHTMETA);
         map.insert("meta".to_string(), KeyCode::KEY_LEFTMETA);
+        map.insert("lmeta".to_string(), KeyCode::KEY_LEFTMETA);
+        map.insert("rmeta".to_string(), KeyCode::KEY_RIGHTMETA);
+        map.insert("win".to_string(), KeyCode::KEY_LEFTMETA);
+        map.insert("lwin".to_string(), KeyCode::KEY_LEFTMETA);
+        map.insert("rwin".to_string(), KeyCode::KEY_RIGHTMETA);
+        map.insert("cmd".to_string(), KeyCode::KEY_LEFTCTRL);
 
         // Media keys
         map.insert("volumeup".to_string(), KeyCode::KEY_VOLUMEUP);
         map.insert("volumedown".to_string(), KeyCode::KEY_VOLUMEDOWN);
         map.insert("volumemute".to_string(), KeyCode::KEY_MUTE);
+        map.insert("volume_up".to_string(), KeyCode::KEY_VOLUMEUP);
+        map.insert("volume_down".to_string(), KeyCode::KEY_VOLUMEDOWN);
+        map.insert("volume_mute".to_string(), KeyCode::KEY_MUTE);
         map.insert("mediaplaypause".to_string(), KeyCode::KEY_PLAYPAUSE);
         map.insert("mediastop".to_string(), KeyCode::KEY_STOP);
         map.insert("medianext".to_string(), KeyCode::KEY_NEXT);
         map.insert("mediaprevious".to_string(), KeyCode::KEY_PREVIOUS);
 
-        map.insert("scrollup".to_string(), KeyCode::KEY_SCROLLUP);
-        map.insert("scrolldown".to_string(), KeyCode::KEY_SCROLLDOWN);
+        map.insert("oem_plus".to_string(), KeyCode::KEY_KPPLUS);
+        map.insert("oem_minus".to_string(), KeyCode::KEY_KPMINUS);
+        map.insert("oem_0".to_string(), KeyCode::KEY_KP0);
+        map.insert("oem_1".to_string(), KeyCode::KEY_KP1);
+        map.insert("oem_2".to_string(), KeyCode::KEY_KP2);
+        map.insert("oem_3".to_string(), KeyCode::KEY_KP3);
+        map.insert("oem_4".to_string(), KeyCode::KEY_KP4);
+        map.insert("oem_5".to_string(), KeyCode::KEY_KP5);
+        map.insert("oem_6".to_string(), KeyCode::KEY_KP6);
+        map.insert("oem_7".to_string(), KeyCode::KEY_KP7);
+        map.insert("oem_8".to_string(), KeyCode::KEY_KP8);
+        map.insert("oem_9".to_string(), KeyCode::KEY_KP9);
 
         // Function keys
         for n in 1..=12 {
@@ -132,7 +186,7 @@ impl UInputBackend {
         self.key_map
             .get(&key.to_lowercase())
             .copied()
-            .ok_or_else(|| InputError::SendError(format!("Unknown key: {}", key)))
+            .ok_or_else(|| InputError::SendError(format!("unknown key: {key}")))
     }
 
     fn emit_key(&self, key: KeyCode, value: i32) -> Result<(), InputError> {
