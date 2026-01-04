@@ -1,19 +1,17 @@
-use std::{collections::HashMap, fs::File, io::BufReader, path::Path};
+use std::{collections::HashMap, fs::File, io::BufReader, path::Path, sync::Arc};
 
 use anyhow::Context;
 use uniremote_core::{Layout, Remote, RemoteId, RemoteMeta};
 use uniremote_input::UInputBackend;
 use uniremote_lua::LuaState;
 
-pub fn load_remotes() -> anyhow::Result<(
-    HashMap<RemoteId, Remote>,
-    HashMap<RemoteId, LuaState<UInputBackend>>,
-)> {
+pub fn load_remotes() -> anyhow::Result<(HashMap<RemoteId, Remote>, HashMap<RemoteId, LuaState>)> {
     let config_dir = xdg::BaseDirectories::with_prefix("uniremote")
         .get_config_home()
         .context("missing config directory")?;
 
     let remotes_dir = config_dir.join("remotes");
+    let backend = Arc::new(UInputBackend::new().context("failed to initialize input backend")?);
 
     Ok(walkdir::WalkDir::new(&remotes_dir)
         .into_iter()
@@ -33,7 +31,10 @@ pub fn load_remotes() -> anyhow::Result<(
             (HashMap::new(), HashMap::new()),
             |(mut remotes, mut lua_states), (id, remote, lua)| {
                 remotes.insert(id.clone(), remote);
+
+                lua.add_state(backend.clone());
                 lua_states.insert(id, lua);
+
                 (remotes, lua_states)
             },
         ))
@@ -42,7 +43,7 @@ pub fn load_remotes() -> anyhow::Result<(
 fn load_remote(
     base_path: &Path,
     path: &Path,
-) -> anyhow::Result<Option<(RemoteId, Remote, LuaState<UInputBackend>)>> {
+) -> anyhow::Result<Option<(RemoteId, Remote, LuaState)>> {
     let meta_path = path.join("meta.prop");
     let remote_id = RemoteId::try_from(path.strip_prefix(base_path)?)?;
 
@@ -70,12 +71,11 @@ fn load_remote(
     };
 
     let lua = {
-        let backend = UInputBackend::new().context("failed to initialize input backend")?;
         let script_path = path.join("remote.lua");
         if script_path.is_file() {
-            LuaState::new(&script_path, backend)?
+            LuaState::new(&script_path)?
         } else {
-            LuaState::empty(backend)
+            LuaState::empty()
         }
     };
 
