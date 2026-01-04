@@ -4,9 +4,9 @@ use thiserror::Error;
 
 #[derive(Debug, Error)]
 pub enum InputError {
-    #[error("Failed to initialize input backend: {0}")]
+    #[error("failed to initialize input backend: {0}")]
     InitError(String),
-    #[error("Failed to send input event: {0}")]
+    #[error("failed to send input event: {0}")]
     SendError(String),
 }
 

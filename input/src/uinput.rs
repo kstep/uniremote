@@ -106,6 +106,18 @@ impl UInputBackend {
         map.insert("super".to_string(), KeyCode::KEY_LEFTMETA);
         map.insert("meta".to_string(), KeyCode::KEY_LEFTMETA);
 
+        // Media keys
+        map.insert("volumeup".to_string(), KeyCode::KEY_VOLUMEUP);
+        map.insert("volumedown".to_string(), KeyCode::KEY_VOLUMEDOWN);
+        map.insert("volumemute".to_string(), KeyCode::KEY_MUTE);
+        map.insert("mediaplaypause".to_string(), KeyCode::KEY_PLAYPAUSE);
+        map.insert("mediastop".to_string(), KeyCode::KEY_STOP);
+        map.insert("medianext".to_string(), KeyCode::KEY_NEXT);
+        map.insert("mediaprevious".to_string(), KeyCode::KEY_PREVIOUS);
+
+        map.insert("scrollup".to_string(), KeyCode::KEY_SCROLLUP);
+        map.insert("scrolldown".to_string(), KeyCode::KEY_SCROLLDOWN);
+
         // Function keys
         for n in 1..=12 {
             let key_code = KeyCode::KEY_F1.code() + (n - 1);
