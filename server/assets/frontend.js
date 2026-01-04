@@ -95,7 +95,7 @@ const eventHandlers = {
     ontouchstart: (element, handler) => {
         element.addEventListener('touchstart', (e) => {
             const touch = e.touches[0];
-            callRemoteAction(handler, [touch.clientX, touch.clientY]);
+            callRemoteAction(handler, [0, touch.clientX, touch.clientY]);
         });
     },
 
@@ -116,7 +116,7 @@ const eventHandlers = {
             const touch = e.touches[0];
             const deltaX = touch.clientX - startX;
             const deltaY = touch.clientY - startY;
-            callRemoteAction(handler, [deltaX, deltaY]);
+            callRemoteAction(handler, [0, deltaX, deltaY]);
             startX = touch.clientX;
             startY = touch.clientY;
         });
