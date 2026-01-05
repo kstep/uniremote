@@ -1,9 +1,10 @@
+use std::sync::Arc;
+
 use axum::{
     extract::{FromRef, Query},
     http::StatusCode,
 };
 use serde::Deserialize;
-use std::sync::Arc;
 
 use crate::AppState;
 
@@ -40,8 +41,12 @@ where
     Arc<AppState>: FromRef<S>,
 {
     let app_state: Arc<AppState> = Arc::<AppState>::from_ref(state);
-    
-    if query.token.as_ref().is_some_and(|token| token == app_state.auth_token.as_str()) {
+
+    if query
+        .token
+        .as_ref()
+        .is_some_and(|token| token == app_state.auth_token.as_str())
+    {
         Ok(())
     } else {
         tracing::warn!("unauthorized access attempt");
