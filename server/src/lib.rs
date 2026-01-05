@@ -53,7 +53,7 @@ pub async fn run(
     tracing::info!("server listening on {local_addr}");
     
     // Only print QR code in LAN mode
-    if bind_addr.is_lan() {
+    if matches!(bind_addr, BindAddress::Lan { .. }) {
         print_qr_code(local_addr, &auth_token);
     }
 

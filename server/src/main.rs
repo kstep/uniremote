@@ -10,7 +10,7 @@ async fn main() -> anyhow::Result<()> {
 
     let args = Args::parse();
 
-    let (remotes, lua_states) = uniremote_loader::load_remotes()?;
+    let (remotes, lua_states) = uniremote_loader::load_remotes(args.remotes)?;
 
     tracing::info!("loaded {} remotes", remotes.len());
 

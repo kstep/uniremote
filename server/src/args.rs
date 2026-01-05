@@ -1,4 +1,4 @@
-use std::{fmt, net::{IpAddr, Ipv4Addr, SocketAddr}, ops::Range, str::FromStr};
+use std::{fmt, net::{IpAddr, Ipv4Addr, SocketAddr}, ops::Range, path::PathBuf, str::FromStr};
 
 use anyhow::{anyhow, bail};
 use clap::Parser;
@@ -24,6 +24,12 @@ pub struct Args {
     ///   (default is localhost with port autodetection)
     #[arg(long, default_value_t = BindAddress::default())]
     pub bind: BindAddress,
+
+    /// Directory to load remotes from
+    /// 
+    /// If not specified, uses XDG config directory (~/.config/uniremote/remotes)
+    #[arg(long)]
+    pub remotes: Option<PathBuf>,
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -154,10 +160,6 @@ impl fmt::Display for BindAddress {
 }
 
 impl BindAddress {
-    pub fn is_lan(&self) -> bool {
-        matches!(self, BindAddress::Lan { .. })
-    }
-
     pub async fn bind(&self) -> Option<TcpListener> {
         match self {
             BindAddress::Ip { ip, port_start, port_end } => {
