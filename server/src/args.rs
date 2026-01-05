@@ -6,6 +6,13 @@ use tokio::net::TcpListener;
 
 const DEFAULT_PORT_RANGE: Range<u16> = 8000..8101;
 
+fn default_remotes_dir() -> PathBuf {
+    xdg::BaseDirectories::with_prefix("uniremote")
+        .get_config_home()
+        .expect("missing config directory")
+        .join("remotes")
+}
+
 #[derive(Parser)]
 #[command(name = "uniremote-server", about = "Universal Remote Control Server", long_about = None)]
 pub struct Args {
@@ -28,8 +35,8 @@ pub struct Args {
     /// Directory to load remotes from
     /// 
     /// If not specified, uses XDG config directory (~/.config/uniremote/remotes)
-    #[arg(long)]
-    pub remotes: Option<PathBuf>,
+    #[arg(long, default_value_os_t = default_remotes_dir())]
+    pub remotes: PathBuf,
 }
 
 #[derive(Debug, Clone, Copy)]

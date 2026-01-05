@@ -5,14 +5,7 @@ use uniremote_core::{Layout, Remote, RemoteId, RemoteMeta};
 use uniremote_input::UInputBackend;
 use uniremote_lua::LuaState;
 
-pub fn load_remotes(remotes_dir: Option<PathBuf>) -> anyhow::Result<(HashMap<RemoteId, Remote>, HashMap<RemoteId, LuaState>)> {
-    let remotes_dir = remotes_dir.unwrap_or_else(|| {
-        xdg::BaseDirectories::with_prefix("uniremote")
-            .get_config_home()
-            .expect("missing config directory")
-            .join("remotes")
-    });
-
+pub fn load_remotes(remotes_dir: PathBuf) -> anyhow::Result<(HashMap<RemoteId, Remote>, HashMap<RemoteId, LuaState>)> {
     let backend = Arc::new(UInputBackend::new().context("failed to initialize input backend")?);
 
     Ok(walkdir::WalkDir::new(&remotes_dir)
