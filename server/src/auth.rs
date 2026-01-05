@@ -5,6 +5,8 @@ use axum::{
 use serde::Deserialize;
 use std::sync::Arc;
 
+use crate::AppState;
+
 /// Authentication token generated on server start
 #[derive(Clone, Debug)]
 pub struct AuthToken(String);
@@ -35,9 +37,9 @@ pub struct TokenQuery {
 /// Validate the authentication token from query parameters
 pub fn validate_token<S>(query: &Query<TokenQuery>, state: &S) -> Result<(), StatusCode>
 where
-    Arc<crate::AppState>: FromRef<S>,
+    Arc<AppState>: FromRef<S>,
 {
-    let app_state: Arc<crate::AppState> = Arc::<crate::AppState>::from_ref(state);
+    let app_state: Arc<AppState> = Arc::<AppState>::from_ref(state);
     
     if query.token.as_ref().is_some_and(|token| token == app_state.auth_token.as_str()) {
         Ok(())
