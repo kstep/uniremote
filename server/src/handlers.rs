@@ -35,12 +35,8 @@ static HTML_FOOTER: &str = r#"</body></html>"#;
 
 pub async fn list_remotes(
     State(state): State<Arc<AppState>>,
-    query: Query<TokenQuery>,
     accept: Option<TypedHeader<Accept>>,
 ) -> Result<Response, StatusCode> {
-    // Validate token
-    validate_token(&query, &state)?;
-
     let wants_html = accept.as_ref().is_some_and(|TypedHeader(accept)| {
         accept
             .media_types()
@@ -89,11 +85,7 @@ fn list_remotes_json(state: &AppState) -> Response {
 pub async fn get_remote(
     Path(remote_id): Path<RemoteId>,
     State(state): State<Arc<AppState>>,
-    query: Query<TokenQuery>,
 ) -> Result<Html<String>, StatusCode> {
-    // Validate token
-    validate_token(&query, &state)?;
-
     let remote = state.remotes.get(&remote_id).ok_or(StatusCode::NOT_FOUND)?;
 
     let mut output = String::from(HTML_HEADER);
@@ -114,7 +106,6 @@ pub async fn call_remote_action(
     query: Query<TokenQuery>,
     Json(payload): Json<CallActionRequest>,
 ) -> Result<Json<serde_json::Value>, StatusCode> {
-    // Validate token
     validate_token(&query, &state)?;
 
     let _remote = state.remotes.get(&remote_id).ok_or(StatusCode::NOT_FOUND)?;
