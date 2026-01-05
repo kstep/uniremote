@@ -61,6 +61,11 @@ fn load_remote(
     )
     .context("failed to parse meta.prop")?;
 
+    if !meta.is_compatible() {
+        tracing::info!("skipping remote {remote_id} due to incompatible platform settings");
+        return Ok(None);
+    }
+
     let layout: Layout = {
         let layout_path = path.join(&meta.layout);
         if layout_path.is_file() {

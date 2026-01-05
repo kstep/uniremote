@@ -2,6 +2,16 @@ use std::path::PathBuf;
 
 use serde::{Deserialize, Serialize};
 
+pub const PLATFORM: Platform = if cfg!(target_os = "linux") {
+    Platform::Linux
+} else if cfg!(target_os = "windows") {
+    Platform::Windows
+} else if cfg!(target_os = "macos") {
+    Platform::Mac
+} else {
+    Platform::Legacy
+};
+
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct RemoteMeta {
     #[serde(rename = "meta.name")]
@@ -40,6 +50,13 @@ pub struct RemoteMeta {
     pub instance: Instance,
     #[serde(default, rename = "meta.autostart")]
     pub autostart: Autostart,
+}
+
+impl RemoteMeta {
+    /// Check if the remote is compatible with the current platform
+    pub fn is_compatible(&self) -> bool {
+        self.platform.contains(&PLATFORM)
+    }
 }
 
 fn deserialize_platform_vec<'de, D>(deserializer: D) -> Result<Vec<Platform>, D::Error>
@@ -103,7 +120,7 @@ pub enum Instance {
     Multi,
 }
 
-#[derive(Default, Serialize, Deserialize, Debug, Clone, Copy)]
+#[derive(Default, Serialize, Deserialize, Debug, Clone, Copy, PartialEq, Eq)]
 #[serde(rename_all = "lowercase")]
 pub enum Platform {
     #[default]
