@@ -36,10 +36,11 @@ async function callRemoteAction(action, args = []) {
     }
 
     try {
-        const response = await fetch(`/api/r/${remoteId}/call?token=${authToken}`, {
+        const response = await fetch(`/api/r/${remoteId}/call`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
+                'Authorization': `Bearer ${authToken}`,
             },
             body: JSON.stringify({
                 action,
