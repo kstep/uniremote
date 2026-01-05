@@ -35,7 +35,7 @@ pub struct Args {
     ///   --bind lan:8000-8100        Bind to LAN IP with port range
     ///   --bind [::1]:8080           Bind to IPv6 address with port (use
     /// brackets)   (default is localhost with port autodetection)
-    #[arg(long, default_value_t = BindAddress::default())]
+    #[arg(long, default_value_t = BindAddress::default(), verbatim_doc_comment)]
     pub bind: BindAddress,
 
     /// Directory to load remotes from

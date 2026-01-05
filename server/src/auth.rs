@@ -17,9 +17,8 @@ impl AuthToken {
 
     pub fn generate() -> Self {
         use rand::RngCore;
-        let mut rng = rand::thread_rng();
         let mut bytes = [0u8; Self::AUTH_TOKEN_LENGTH];
-        rng.fill_bytes(&mut bytes);
+        rand::rng().fill_bytes(&mut bytes);
         let token = hex::encode(bytes);
         Self(token)
     }
