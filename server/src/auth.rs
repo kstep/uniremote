@@ -1,9 +1,6 @@
 use std::sync::Arc;
 
-use axum::{
-    extract::FromRef,
-    http::StatusCode,
-};
+use axum::{extract::FromRef, http::StatusCode};
 use axum_extra::{
     TypedHeader,
     headers::{Authorization, authorization::Bearer},
@@ -66,10 +63,10 @@ mod tests {
     fn test_auth_token_generation() {
         let token1 = AuthToken::generate();
         let token2 = AuthToken::generate();
-        
+
         // Tokens should be different
         assert_ne!(token1.as_str(), token2.as_str());
-        
+
         // Token should be hex-encoded (32 chars for 16 bytes)
         assert_eq!(token1.as_str().len(), 32);
         assert!(token1.as_str().chars().all(|c| c.is_ascii_hexdigit()));

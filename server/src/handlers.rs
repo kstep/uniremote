@@ -17,10 +17,7 @@ use mediatype::{
 };
 use uniremote_core::{CallActionRequest, RemoteId};
 
-use crate::{
-    AppState,
-    auth::validate_token,
-};
+use crate::{AppState, auth::validate_token};
 
 const CONTENT_TYPE_HTML: MediaType = MediaType::from_parts(TEXT, HTML, None, &[]);
 
