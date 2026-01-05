@@ -41,6 +41,12 @@ impl LuaState {
         Ok(function)
     }
 
+    pub fn settings(&self) -> anyhow::Result<Table> {
+        let globals = self.lua.globals();
+        let settings: Table = globals.get("settings")?;
+        Ok(settings)
+    }
+
     pub fn call_action(
         &self,
         action_id: ActionId,

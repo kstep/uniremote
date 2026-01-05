@@ -87,6 +87,20 @@ fn load_remote(
         }
     };
 
+    let settings_path = path.join("settings.prop");
+    if settings_path.is_file() {
+        let settings: HashMap<String, String> = serde_java_properties::from_reader(BufReader::new(
+            File::open(settings_path).context("failed to open settings.prop")?,
+        ))
+        .context("failed to parse settings.prop")?;
+
+        if let Ok(lua_settings) = lua.settings() {
+            for (key, value) in settings {
+                let _ = lua_settings.raw_set(key, value);
+            }
+        }
+    }
+
     Ok(Some((
         remote_id,
         Remote {
