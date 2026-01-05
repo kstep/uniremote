@@ -56,7 +56,10 @@ fn list_remotes_html(state: &AppState) -> Response {
     let mut html = String::from(HTML_HEADER);
     html.push_str(r#"<h1>Available Remotes</h1><ul>"#);
 
-    for (id, remote) in &state.remotes {
+    let mut remotes: Vec<_> = state.remotes.iter().collect();
+    remotes.sort_by(|a, b| a.1.meta.name.cmp(&b.1.meta.name));
+
+    for (id, remote) in remotes {
         html.push_str(&format!(
             r#"<li><a href="/r/{id}">{}</a></li>"#,
             remote.meta.name
@@ -70,7 +73,7 @@ fn list_remotes_html(state: &AppState) -> Response {
 }
 
 fn list_remotes_json(state: &AppState) -> Response {
-    let remotes: Vec<_> = state
+    let mut remotes: Vec<_> = state
         .remotes
         .iter()
         .map(|(id, remote)| {
@@ -80,6 +83,10 @@ fn list_remotes_json(state: &AppState) -> Response {
             })
         })
         .collect();
+    
+    remotes.sort_by(|a, b| {
+        a["name"].as_str().unwrap_or("").cmp(b["name"].as_str().unwrap_or(""))
+    });
 
     Json(serde_json::json!({ "remotes": remotes })).into_response()
 }
