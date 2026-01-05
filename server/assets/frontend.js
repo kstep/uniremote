@@ -61,9 +61,7 @@ function showNotification(title, message, duration = 5000) {
     const removeNotification = () => {
         notification.classList.add('hiding');
         setTimeout(() => {
-            if (notification.parentNode) {
-                notification.parentNode.removeChild(notification);
-            }
+            notification.remove();
         }, 300);
     };
     
@@ -112,16 +110,6 @@ async function callRemoteAction(action, args = []) {
             let errorMessage = `${response.status} ${response.statusText}`;
             let errorTitle = 'Action Failed';
             
-            // Try to get more specific error message from response
-            try {
-                const errorData = await response.json();
-                if (errorData.message) {
-                    errorMessage = errorData.message;
-                }
-            } catch (e) {
-                // If JSON parsing fails, use status text
-            }
-            
             // Customize error messages based on status code
             switch (response.status) {
                 case 401:
@@ -136,6 +124,16 @@ async function callRemoteAction(action, args = []) {
                     errorTitle = 'Server Error';
                     errorMessage = 'An internal server error occurred. Please try again.';
                     break;
+            }
+            
+            // Try to get more specific error message from response (if available)
+            try {
+                const errorData = await response.json();
+                if (errorData.message) {
+                    errorMessage = errorData.message;
+                }
+            } catch (e) {
+                // If JSON parsing fails, use the default message from switch
             }
             
             console.error(`API call failed: ${response.status} ${response.statusText}`);
