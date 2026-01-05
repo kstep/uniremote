@@ -73,9 +73,11 @@ fn list_remotes_html(state: &AppState) -> Response {
 }
 
 fn list_remotes_json(state: &AppState) -> Response {
-    let mut remotes: Vec<_> = state
-        .remotes
-        .iter()
+    let mut remotes: Vec<_> = state.remotes.iter().collect();
+    remotes.sort_by(|a, b| a.1.meta.name.cmp(&b.1.meta.name));
+
+    let remotes: Vec<_> = remotes
+        .into_iter()
         .map(|(id, remote)| {
             serde_json::json!({
                 "id": &*id,
@@ -83,10 +85,6 @@ fn list_remotes_json(state: &AppState) -> Response {
             })
         })
         .collect();
-    
-    remotes.sort_by(|a, b| {
-        a["name"].as_str().unwrap_or("").cmp(b["name"].as_str().unwrap_or(""))
-    });
 
     Json(serde_json::json!({ "remotes": remotes })).into_response()
 }
