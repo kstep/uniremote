@@ -76,6 +76,7 @@ fn load_modules(lua: &Lua) -> anyhow::Result<()> {
     let libs = lua.create_table()?;
     crate::keyboard::load(lua, &libs)?;
     crate::mouse::load(lua, &libs)?;
+    crate::script::load(lua, &libs)?;
     lua.globals().set("libs", libs)?;
     Ok(())
 }
