@@ -56,79 +56,79 @@ async function callRemoteAction(action, args = []) {
 }
 
 // Event type callbacks
-const eventHandlers = {
-    ontap: (element, handler) => {
+const eventActions = {
+    ontap: (element, action) => {
         element.addEventListener('click', (e) => {
             e.preventDefault();
-            callRemoteAction(handler);
+            callRemoteAction(action);
         });
     },
 
-    onhold: (element, handler) => {
+    onhold: (element, action) => {
         let pressTimer;
         element.addEventListener('mousedown', (e) => {
             e.preventDefault();
             pressTimer = setTimeout(() => {
-                callRemoteAction(handler);
+                callRemoteAction(action);
             }, 500);
         });
         element.addEventListener('mouseup', () => clearTimeout(pressTimer));
         element.addEventListener('mouseleave', () => clearTimeout(pressTimer));
     },
 
-    ondown: (element, handler) => {
+    ondown: (element, action) => {
         element.addEventListener('mousedown', (e) => {
             e.preventDefault();
-            callRemoteAction(handler);
+            callRemoteAction(action);
         });
     },
 
-    onup: (element, handler) => {
+    onup: (element, action) => {
         element.addEventListener('mouseup', (e) => {
             e.preventDefault();
-            callRemoteAction(handler);
+            callRemoteAction(action);
         });
     },
 
-    onchange: (element, handler) => {
+    onchange: (element, action) => {
         element.addEventListener('change', (e) => {
             const value = e.target.type === 'checkbox' ? e.target.checked : e.target.value;
-            callRemoteAction(handler, [value]);
+            callRemoteAction(action, [value]);
         });
     },
 
-    ondone: (element, handler) => {
+    ondone: (element, action) => {
         element.addEventListener('blur', (e) => {
-            callRemoteAction(handler, [e.target.value]);
+            callRemoteAction(action, [e.target.value]);
         });
     },
 
-    ondoubletap: (element, handler) => {
+    ondoubletap: (element, action) => {
         element.addEventListener('dblclick', (e) => {
             e.preventDefault();
-            callRemoteAction(handler);
+            callRemoteAction(action);
         });
     },
 
-    ontouchsize: (element, handler) => {
+    ontouchsize: (element, action) => {
         // Placeholder for touch size handling
         console.warn('ontouchsize not fully implemented');
     },
 
-    ontouchstart: (element, handler) => {
+    ontouchstart: (element, action) => {
         element.addEventListener('touchstart', (e) => {
             const touch = e.touches[0];
-            callRemoteAction(handler, [0, touch.clientX, touch.clientY]);
+            callRemoteAction(action, [0, touch.clientX, touch.clientY]);
         });
     },
 
-    ontouchend: (element, handler) => {
+    ontouchend: (element, action) => {
         element.addEventListener('touchend', (e) => {
-            callRemoteAction(handler);
+            callRemoteAction(action);
         });
     },
 
-    ontouchdelta: (element, handler) => {
+    ontouchdelta: (element, action) => {
         let startX, startY;
         element.addEventListener('touchstart', (e) => {
             const touch = e.touches[0];
@@ -139,13 +139,13 @@ const eventHandlers = {
             const touch = e.touches[0];
             const deltaX = touch.clientX - startX;
             const deltaY = touch.clientY - startY;
-            callRemoteAction(handler, [0, deltaX, deltaY]);
+            callRemoteAction(action, [0, deltaX, deltaY]);
             startX = touch.clientX;
             startY = touch.clientY;
         });
     },
 
-    onmultitap: (element, handler) => {
+    onmultitap: (element, action) => {
         let tapCount = 0;
         let tapTimer;
         element.addEventListener('click', (e) => {
@@ -153,49 +153,49 @@ const eventHandlers = {
             tapCount++;
             clearTimeout(tapTimer);
             tapTimer = setTimeout(() => {
-                callRemoteAction(handler, [tapCount]);
+                callRemoteAction(action, [tapCount]);
                 tapCount = 0;
             }, 300);
         });
     },
 
-    onlaunch: (element, handler) => {
+    onlaunch: (element, action) => {
         // Call immediately when page loads
-        callRemoteAction(handler);
+        callRemoteAction(action);
     },
 
-    onvolumedown: (element, handler) => {
-        // Register global key handler for volume down
+    onvolumedown: (element, action) => {
+        // Register global key action for volume down
         document.addEventListener('keydown', (e) => {
             if (e.key === 'AudioVolumeDown') {
                 e.preventDefault();
-                callRemoteAction(handler);
+                callRemoteAction(action);
             }
         });
     },
 
-    onvolumeup: (element, handler) => {
-        // Register global key handler for volume up
+    onvolumeup: (element, action) => {
+        // Register global key action for volume up
         document.addEventListener('keydown', (e) => {
             if (e.key === 'AudioVolumeUp') {
                 e.preventDefault();
-                callRemoteAction(handler);
+                callRemoteAction(action);
             }
         });
     },
 };
 
-// Scan DOM and attach event handlers
+// Scan DOM and attach event actions
 function initializeRemote() {
     // Find all elements with data-on* attributes
     const elements = document.querySelectorAll('[data-ontap], [data-onhold], [data-ondown], [data-onup], [data-onchange], [data-ondone], [data-ondoubletap], [data-ontouchsize], [data-ontouchstart], [data-ontouchend], [data-ontouchdelta], [data-onmultitap], [data-onlaunch], [data-onvolumedown], [data-onvolumeup]');
 
     elements.forEach(element => {
         // Iterate through all possible event types
-        Object.keys(eventHandlers).forEach(eventType => {
-            const handler = element.getAttribute(`data-${eventType}`);
-            if (handler) {
-                eventHandlers[eventType](element, handler);
+        Object.keys(eventActions).forEach(eventType => {
+            const action = element.getAttribute(`data-${eventType}`);
+            if (action) {
+                eventActions[eventType](element, action);
             }
         });
     });
