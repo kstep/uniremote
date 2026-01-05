@@ -51,3 +51,21 @@ where
     tracing::warn!("unauthorized access attempt");
     Err(StatusCode::UNAUTHORIZED)
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_auth_token_generation() {
+        let token1 = AuthToken::generate();
+        let token2 = AuthToken::generate();
+        
+        // Tokens should be different
+        assert_ne!(token1.as_str(), token2.as_str());
+        
+        // Token should be hex-encoded (32 chars for 16 bytes)
+        assert_eq!(token1.as_str().len(), 32);
+        assert!(token1.as_str().chars().all(|c| c.is_ascii_hexdigit()));
+    }
+}
