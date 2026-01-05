@@ -8,6 +8,8 @@ function extractAuthToken() {
         authToken = token;
         // Store in sessionStorage for persistence across page navigations
         sessionStorage.setItem('authToken', token);
+        window.location.search = '';
+        window.history.replaceState({}, document.title, window.location.pathname);
     } else {
         // Try to retrieve from sessionStorage
         authToken = sessionStorage.getItem('authToken');

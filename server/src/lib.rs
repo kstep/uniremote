@@ -3,10 +3,15 @@ use std::{collections::HashMap, sync::Arc};
 use anyhow::Context;
 use axum::{
     Router,
+    http::{Method, header},
     routing::{get, post},
 };
 use tokio::sync::mpsc::Sender;
-use tower_http::services::ServeDir;
+use tower_http::{
+    cors::{AllowOrigin, CorsLayer},
+    services::ServeDir,
+    trace::TraceLayer,
+};
 use uniremote_core::{CallActionRequest, Remote, RemoteId};
 
 mod auth;
@@ -32,18 +37,6 @@ pub async fn run(
     bind_addr: BindAddress,
 ) -> anyhow::Result<()> {
     let auth_token = AuthToken::generate();
-    let state = Arc::new(AppState {
-        worker_tx,
-        remotes,
-        auth_token: auth_token.clone(),
-    });
-
-    let app = Router::new()
-        .route("/", get(handlers::list_remotes))
-        .route("/r/{id}", get(handlers::get_remote))
-        .route("/api/r/{id}/call", post(handlers::call_remote_action))
-        .nest_service("/assets", ServeDir::new(ASSETS_DIR))
-        .with_state(state);
 
     let listener = bind_addr
         .bind()
@@ -51,9 +44,31 @@ pub async fn run(
         .context("failed to bind to address")?;
 
     let local_addr = listener.local_addr()?;
-    tracing::info!("server listening on {local_addr}");
+    let origin = format!("http://{local_addr}");
 
     print_qr_code(local_addr, &auth_token);
+
+    let state = Arc::new(AppState {
+        worker_tx,
+        remotes,
+        auth_token,
+    });
+
+    let cors = CorsLayer::new()
+        .allow_origin(AllowOrigin::exact(origin.parse().unwrap()))
+        .allow_methods([Method::GET, Method::POST])
+        .allow_headers([header::CONTENT_TYPE, header::AUTHORIZATION, header::ACCEPT]);
+
+    let app = Router::new()
+        .route("/", get(handlers::list_remotes))
+        .route("/r/{id}", get(handlers::get_remote))
+        .route("/api/r/{id}/call", post(handlers::call_remote_action))
+        .nest_service("/assets", ServeDir::new(ASSETS_DIR))
+        .layer(TraceLayer::new_for_http())
+        .layer(cors)
+        .with_state(state);
+
+    tracing::info!("server listening on {origin}");
     axum::serve(listener, app).await?;
 
     Ok(())
