@@ -6,8 +6,7 @@ use tokio::net::TcpListener;
 const DEFAULT_PORT_RANGE: Range<u16> = 8000..8101;
 
 #[derive(Parser)]
-#[command(name = "uniremote-server")]
-#[command(about = "Universal Remote Control Server", long_about = None)]
+#[command(name = "uniremote-server", about = "Universal Remote Control Server", long_about = None)]
 pub struct Args {
     /// Bind address specification
     /// 
