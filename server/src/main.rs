@@ -9,7 +9,7 @@ async fn main() -> anyhow::Result<()> {
     tracing_subscriber::fmt::init();
 
     let args = Args::parse();
-    let bind_addr = args.bind.unwrap_or_default();
+    let bind_addr = args.bind;
 
     let (remotes, lua_states) = uniremote_loader::load_remotes()?;
 

@@ -1,4 +1,4 @@
-use std::{net::{IpAddr, Ipv4Addr, SocketAddr}, ops::Range, str::FromStr};
+use std::{fmt, net::{IpAddr, Ipv4Addr, SocketAddr}, ops::Range, str::FromStr};
 
 use clap::Parser;
 use tokio::net::TcpListener;
@@ -22,8 +22,8 @@ pub struct Args {
     ///   --bind lan:8000-8100        Bind to LAN IP with port range
     ///   --bind [::1]:8080           Bind to IPv6 address with port (use brackets)
     ///   (default is localhost with port autodetection)
-    #[arg(long)]
-    pub bind: Option<BindAddress>,
+    #[arg(long, default_value_t = BindAddress::default())]
+    pub bind: BindAddress,
 }
 
 #[derive(Debug, Clone)]
@@ -107,6 +107,48 @@ impl FromStr for BindAddress {
             ip,
             port_range: DEFAULT_PORT_RANGE,
         })
+    }
+}
+
+impl fmt::Display for BindAddress {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            BindAddress::Localhost { port_range } => {
+                if port_range == &DEFAULT_PORT_RANGE {
+                    write!(f, "localhost")
+                } else if port_range.len() == 1 {
+                    write!(f, ":{}", port_range.start)
+                } else {
+                    write!(f, ":{}-{}", port_range.start, port_range.end - 1)
+                }
+            }
+            BindAddress::Lan { port_range } => {
+                if port_range == &DEFAULT_PORT_RANGE {
+                    write!(f, "lan")
+                } else if port_range.len() == 1 {
+                    write!(f, "lan:{}", port_range.start)
+                } else {
+                    write!(f, "lan:{}-{}", port_range.start, port_range.end - 1)
+                }
+            }
+            BindAddress::Ip { ip, port_range } => {
+                if port_range == &DEFAULT_PORT_RANGE {
+                    write!(f, "{}", ip)
+                } else if port_range.len() == 1 {
+                    if ip.is_ipv6() {
+                        write!(f, "[{}]:{}", ip, port_range.start)
+                    } else {
+                        write!(f, "{}:{}", ip, port_range.start)
+                    }
+                } else {
+                    if ip.is_ipv6() {
+                        write!(f, "[{}]:{}-{}", ip, port_range.start, port_range.end - 1)
+                    } else {
+                        write!(f, "{}:{}-{}", ip, port_range.start, port_range.end - 1)
+                    }
+                }
+            }
+        }
     }
 }
 
@@ -304,5 +346,62 @@ mod tests {
     fn test_parse_invalid_ip() {
         let result = BindAddress::from_str("999.999.999.999");
         assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_display_default() {
+        let addr = BindAddress::default();
+        assert_eq!(addr.to_string(), "localhost");
+    }
+
+    #[test]
+    fn test_display_localhost_port() {
+        let addr = BindAddress::Localhost { port_range: 8080..8081 };
+        assert_eq!(addr.to_string(), ":8080");
+    }
+
+    #[test]
+    fn test_display_localhost_port_range() {
+        let addr = BindAddress::Localhost { port_range: 8000..8101 };
+        assert_eq!(addr.to_string(), "localhost");
+    }
+
+    #[test]
+    fn test_display_lan() {
+        let addr = BindAddress::Lan { port_range: 8000..8101 };
+        assert_eq!(addr.to_string(), "lan");
+    }
+
+    #[test]
+    fn test_display_lan_port() {
+        let addr = BindAddress::Lan { port_range: 8080..8081 };
+        assert_eq!(addr.to_string(), "lan:8080");
+    }
+
+    #[test]
+    fn test_display_ip() {
+        let addr = BindAddress::Ip { 
+            ip: "192.168.1.100".parse().unwrap(),
+            port_range: 8000..8101 
+        };
+        assert_eq!(addr.to_string(), "192.168.1.100");
+    }
+
+    #[test]
+    fn test_display_ip_port() {
+        let addr = BindAddress::Ip { 
+            ip: "192.168.1.100".parse().unwrap(),
+            port_range: 8080..8081 
+        };
+        assert_eq!(addr.to_string(), "192.168.1.100:8080");
+    }
+
+    #[test]
+    fn test_display_ipv6_port() {
+        let addr = BindAddress::Ip { 
+            ip: "::1".parse().unwrap(),
+            port_range: 8080..8081 
+        };
+        assert_eq!(addr.to_string(), "[::1]:8080");
     }
 }
