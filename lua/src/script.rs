@@ -3,6 +3,32 @@ use std::{fs, io::Write, os::unix::fs::PermissionsExt, process::Command};
 use mlua::{Lua, MultiValue, Table};
 
 static DEFAULT_SHELL: &str = "/bin/sh";
+static DEFAULT_OPEN_PROGRAM: &str = "xdg-open";
+
+fn throw(_lua: &Lua, message: String) -> mlua::Result<()> {
+    Err(mlua::Error::runtime(message))
+}
+
+fn open(_lua: &Lua, (path, args): (String, MultiValue)) -> mlua::Result<()> {
+    Command::new(DEFAULT_OPEN_PROGRAM)
+        .arg(path)
+        .args(args.iter().filter_map(|v| v.to_string().ok()))
+        .status()
+        .map_err(|error| {
+            mlua::Error::runtime(format_args!("failed to execute open command: {error}"))
+        })?;
+    Ok(())
+}
+
+fn start(_lua: &Lua, (program, args): (String, MultiValue)) -> mlua::Result<()> {
+    Command::new(program)
+        .args(args.iter().filter_map(|v| v.to_string().ok()))
+        .spawn()
+        .map_err(|error| {
+            mlua::Error::runtime(format_args!("failed to execute start command: {error}"))
+        })?;
+    Ok(())
+}
 
 fn shell(_lua: &Lua, args: MultiValue) -> mlua::Result<(String, String, i32)> {
     if args.is_empty() {
@@ -69,11 +95,15 @@ pub fn load(lua: &Lua, libs: &Table) -> anyhow::Result<()> {
     let shell = lua.create_function(shell)?;
     let os = lua.globals().get::<Table>("os")?;
     os.set("script", &shell)?;
+    os.set("open", lua.create_function(open)?)?;
+    os.set("start", lua.create_function(start)?)?;
+    os.set("throw", lua.create_function(throw)?)?;
 
     module.set("default", &shell)?;
     module.set("shell", shell)?;
 
     libs.set("script", &module)?;
     lua.register_module("script", module)?;
+
     Ok(())
 }
