@@ -73,7 +73,7 @@ async fn bind_lan_port(port_range: Range<u16>) -> Option<TcpListener> {
 }
 
 pub fn print_qr_code(addr: SocketAddr, auth_token: &AuthToken) {
-    let url = format!("http://{}?token={}", addr, auth_token.as_str());
+    let url = format!("http://{addr}?token={}", auth_token.as_str());
 
     match qrcode::QrCode::new(&url) {
         Ok(code) => {
