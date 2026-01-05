@@ -13,11 +13,12 @@ use crate::AppState;
 pub struct AuthToken(String);
 
 impl AuthToken {
-    /// Generate a new random authentication token (64 bytes)
+    const AUTH_TOKEN_LENGTH: usize = 32;
+
     pub fn generate() -> Self {
         use rand::RngCore;
         let mut rng = rand::thread_rng();
-        let mut bytes = [0u8; 64];
+        let mut bytes = [0u8; Self::AUTH_TOKEN_LENGTH];
         rng.fill_bytes(&mut bytes);
         let token = hex::encode(bytes);
         Self(token)
