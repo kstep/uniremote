@@ -9,7 +9,6 @@ async fn main() -> anyhow::Result<()> {
     tracing_subscriber::fmt::init();
 
     let args = Args::parse();
-    let bind_addr = args.bind;
 
     let (remotes, lua_states) = uniremote_loader::load_remotes()?;
 
@@ -18,7 +17,7 @@ async fn main() -> anyhow::Result<()> {
     let (tx, rx) = tokio::sync::mpsc::channel(WORKER_CHANNEL_SIZE);
     let worker = tokio::spawn(uniremote_lua::run(rx, lua_states));
 
-    uniremote_server::run(tx, remotes, bind_addr).await?;
+    uniremote_server::run(tx, remotes, args.bind).await?;
     worker.await?;
 
     Ok(())
