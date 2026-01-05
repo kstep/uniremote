@@ -327,7 +327,7 @@ fn render_style(
         render_theme(output, "light", light);
     }
 
-    output.push('"');
+    output.push_str("\" ");
 }
 
 fn render_theme(output: &mut String, name: &str, theme: &Theme) {

@@ -50,6 +50,6 @@ where
         Ok(())
     } else {
         tracing::warn!("unauthorized access attempt");
-        Err(StatusCode::FORBIDDEN)
+        Err(StatusCode::UNAUTHORIZED)
     }
 }
