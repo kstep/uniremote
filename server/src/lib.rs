@@ -1,4 +1,4 @@
-use std::{collections::HashMap, net::SocketAddr, ops::Range, sync::Arc};
+use std::{collections::HashMap, net::{IpAddr, Ipv4Addr, SocketAddr}, ops::Range, sync::Arc};
 
 use anyhow::Context;
 use axum::{
@@ -15,8 +15,23 @@ mod qr;
 
 use crate::{auth::AuthToken, qr::print_qr_code};
 
-const LISTEN_PORT_RANGE: Range<u16> = 8000..8101;
 const ASSETS_DIR: &str = "server/assets";
+
+#[derive(Debug, Clone)]
+pub enum BindAddress {
+    /// Bind to a specific IP with port range
+    Ip { ip: IpAddr, port_range: Range<u16> },
+    /// Bind to localhost with port range
+    Localhost { port_range: Range<u16> },
+    /// Bind to LAN IP with port range
+    Lan { port_range: Range<u16> },
+}
+
+impl BindAddress {
+    pub fn is_lan(&self) -> bool {
+        matches!(self, BindAddress::Lan { .. })
+    }
+}
 
 struct AppState {
     worker_tx: Sender<(RemoteId, CallActionRequest)>,
@@ -27,6 +42,7 @@ struct AppState {
 pub async fn run(
     worker_tx: Sender<(RemoteId, CallActionRequest)>,
     remotes: HashMap<RemoteId, Remote>,
+    bind_addr: BindAddress,
 ) -> anyhow::Result<()> {
     let auth_token = AuthToken::generate();
     let state = Arc::new(AppState {
@@ -42,17 +58,47 @@ pub async fn run(
         .nest_service("/assets", ServeDir::new(ASSETS_DIR))
         .with_state(state);
 
-    let listener = bind_lan_port(LISTEN_PORT_RANGE)
+    let listener = bind_address(&bind_addr)
         .await
-        .context("failed to bind to lan port")?;
+        .context("failed to bind to address")?;
 
     let local_addr = listener.local_addr()?;
     tracing::info!("server listening on {local_addr}");
-    print_qr_code(local_addr, &auth_token);
+    
+    // Only print QR code in LAN mode
+    if bind_addr.is_lan() {
+        print_qr_code(local_addr, &auth_token);
+    }
 
     axum::serve(listener, app).await?;
 
     Ok(())
+}
+
+async fn bind_address(bind_addr: &BindAddress) -> Option<TcpListener> {
+    match bind_addr {
+        BindAddress::Ip { ip, port_range } => {
+            bind_to_ip_port(*ip, port_range.clone()).await
+        }
+        BindAddress::Localhost { port_range } => {
+            let localhost = IpAddr::V4(Ipv4Addr::LOCALHOST);
+            bind_to_ip_port(localhost, port_range.clone()).await
+        }
+        BindAddress::Lan { port_range } => {
+            bind_lan_port(port_range.clone()).await
+        }
+    }
+}
+
+async fn bind_to_ip_port(ip: IpAddr, port_range: Range<u16>) -> Option<TcpListener> {
+    for port in port_range {
+        let addr = SocketAddr::new(ip, port);
+        let Ok(listener) = TcpListener::bind(addr).await else {
+            continue;
+        };
+        return Some(listener);
+    }
+    None
 }
 
 async fn bind_lan_port(port_range: Range<u16>) -> Option<TcpListener> {
@@ -62,13 +108,5 @@ async fn bind_lan_port(port_range: Range<u16>) -> Option<TcpListener> {
         return None;
     }
 
-    for port in port_range {
-        let addr = SocketAddr::new(ip, port);
-        let Ok(listener) = TcpListener::bind(addr).await else {
-            continue;
-        };
-        return Some(listener);
-    }
-
-    None
+    bind_to_ip_port(ip, port_range).await
 }
