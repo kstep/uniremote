@@ -53,11 +53,7 @@ pub async fn run(
     let local_addr = listener.local_addr()?;
     tracing::info!("server listening on {local_addr}");
 
-    // Only print QR code in LAN mode
-    if matches!(bind_addr, BindAddress::Lan { .. }) {
-        print_qr_code(local_addr, &auth_token);
-    }
-
+    print_qr_code(local_addr, &auth_token);
     axum::serve(listener, app).await?;
 
     Ok(())

@@ -89,6 +89,22 @@ impl FromStr for BindAddress {
             });
         }
 
+        // Handle "localhost" and "localhost:..." formats
+        if bind == "localhost" {
+            return Ok(BindAddress::Localhost {
+                port_start: DEFAULT_PORT_RANGE.start,
+                port_end: DEFAULT_PORT_RANGE.end,
+            });
+        }
+
+        if let Some(port_spec) = bind.strip_prefix("localhost:") {
+            let (start, end) = parse_port_range(port_spec)?;
+            return Ok(BindAddress::Localhost {
+                port_start: start,
+                port_end: end,
+            });
+        }
+
         // Handle ":port" or ":port-port" (localhost)
         if let Some(port_spec) = bind.strip_prefix(':') {
             let (start, end) = parse_port_range(port_spec)?;
