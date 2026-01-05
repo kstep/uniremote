@@ -42,14 +42,20 @@ where
 {
     let app_state: Arc<AppState> = Arc::<AppState>::from_ref(state);
 
-    if let Some(TypedHeader(Authorization(bearer))) = auth_header {
-        if bearer.token() == app_state.auth_token.as_str() {
-            return Ok(());
+    match auth_header {
+        Some(TypedHeader(Authorization(bearer))) => {
+            if bearer.token() == app_state.auth_token.as_str() {
+                Ok(())
+            } else {
+                tracing::warn!("unauthorized access attempt with invalid token");
+                Err(StatusCode::UNAUTHORIZED)
+            }
+        }
+        None => {
+            tracing::warn!("unauthorized access attempt without authorization header");
+            Err(StatusCode::UNAUTHORIZED)
         }
     }
-
-    tracing::warn!("unauthorized access attempt");
-    Err(StatusCode::UNAUTHORIZED)
 }
 
 #[cfg(test)]
