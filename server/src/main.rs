@@ -73,8 +73,7 @@ fn parse_bind_address(bind: &str) -> anyhow::Result<uniremote_server::BindAddres
         // Try to parse as IP first to distinguish from IPv6 without brackets
         if let Ok(ip) = ip_str.parse::<IpAddr>() {
             // Make sure port_spec is actually a port, not part of IPv6 address
-            if parse_port_range(port_spec).is_ok() {
-                let port_range = parse_port_range(port_spec)?;
+            if let Ok(port_range) = parse_port_range(port_spec) {
                 return Ok(uniremote_server::BindAddress::Ip { ip, port_range });
             }
         }
