@@ -2,7 +2,7 @@ use std::sync::Arc;
 
 use axum::{
     Json,
-    extract::{Path, State},
+    extract::{Path, Query, State},
     http::StatusCode,
     response::{Html, IntoResponse, Response},
 };
@@ -34,28 +34,35 @@ static HTML_FOOTER: &str = r#"</body></html>"#;
 
 pub async fn list_remotes(
     State(state): State<Arc<AppState>>,
+    query: Query<crate::auth::TokenQuery>,
     accept: Option<TypedHeader<Accept>>,
-) -> Response {
+) -> Result<Response, StatusCode> {
+    // Validate token
+    crate::auth::validate_token(&query, &state)?;
+
     let wants_html = accept.as_ref().is_some_and(|TypedHeader(accept)| {
         accept
             .media_types()
             .any(|mime| mime.essence() == CONTENT_TYPE_HTML)
     });
 
+    let token = query.token.as_deref().unwrap_or("");
+
     if wants_html {
-        list_remotes_html(&state)
+        Ok(list_remotes_html(&state, token))
     } else {
-        list_remotes_json(&state)
+        Ok(list_remotes_json(&state))
     }
 }
 
-fn list_remotes_html(state: &AppState) -> Response {
+fn list_remotes_html(state: &AppState, token: &str) -> Response {
     let mut html = String::from(HTML_HEADER);
     html.push_str(r#"<h1>Available Remotes</h1><ul>"#);
 
     for (id, remote) in &state.remotes {
         html.push_str(&format!(
-            r#"<li><a href="/r/{id}">{}</a></li>"#,
+            r#"<li><a href="/r/{id}?token={}">{}</a></li>"#,
+            urlencoding::encode(token),
             remote.meta.name
         ));
     }
@@ -84,12 +91,20 @@ fn list_remotes_json(state: &AppState) -> Response {
 pub async fn get_remote(
     Path(remote_id): Path<RemoteId>,
     State(state): State<Arc<AppState>>,
+    query: Query<crate::auth::TokenQuery>,
 ) -> Result<Html<String>, StatusCode> {
+    // Validate token
+    crate::auth::validate_token(&query, &state)?;
+
     let remote = state.remotes.get(&remote_id).ok_or(StatusCode::NOT_FOUND)?;
 
+    let token = query.token.as_deref().unwrap_or("");
     let mut output = String::from(HTML_HEADER);
 
-    output.push_str("<div class=\"backlink\"><a href=\"/\">&larr; Back to remotes</a></div>");
+    output.push_str(&format!(
+        "<div class=\"backlink\"><a href=\"/?token={}\">&larr; Back to remotes</a></div>",
+        urlencoding::encode(token)
+    ));
     output.push_str("<h1>");
     output.push_str(&remote.meta.name);
     output.push_str("</h1>");
@@ -102,8 +117,12 @@ pub async fn get_remote(
 pub async fn call_remote_action(
     Path(remote_id): Path<RemoteId>,
     State(state): State<Arc<AppState>>,
+    query: Query<crate::auth::TokenQuery>,
     Json(payload): Json<CallActionRequest>,
 ) -> Result<Json<serde_json::Value>, StatusCode> {
+    // Validate token
+    crate::auth::validate_token(&query, &state)?;
+
     let _remote = state.remotes.get(&remote_id).ok_or(StatusCode::NOT_FOUND)?;
 
     tracing::info!("call action '{}' on remote '{remote_id}'", payload.action);

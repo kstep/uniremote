@@ -9,7 +9,10 @@ use tokio::{net::TcpListener, sync::mpsc::Sender};
 use tower_http::services::ServeDir;
 use uniremote_core::{CallActionRequest, Remote, RemoteId};
 
+mod auth;
 mod handlers;
+
+use auth::AuthToken;
 
 const LISTEN_PORT_RANGE: Range<u16> = 8000..8101;
 const ASSETS_DIR: &str = "server/assets";
@@ -17,13 +20,19 @@ const ASSETS_DIR: &str = "server/assets";
 struct AppState {
     worker_tx: Sender<(RemoteId, CallActionRequest)>,
     remotes: HashMap<RemoteId, Remote>,
+    auth_token: AuthToken,
 }
 
 pub async fn run(
     worker_tx: Sender<(RemoteId, CallActionRequest)>,
     remotes: HashMap<RemoteId, Remote>,
 ) -> anyhow::Result<()> {
-    let state = Arc::new(AppState { worker_tx, remotes });
+    let auth_token = AuthToken::generate();
+    let state = Arc::new(AppState {
+        worker_tx,
+        remotes,
+        auth_token: auth_token.clone(),
+    });
 
     let app = Router::new()
         .route("/", get(handlers::list_remotes))
@@ -38,7 +47,7 @@ pub async fn run(
 
     let local_addr = listener.local_addr()?;
     tracing::info!("server listening on {local_addr}");
-    print_qr_code(local_addr);
+    print_qr_code(local_addr, &auth_token);
 
     axum::serve(listener, app).await?;
 
@@ -63,8 +72,8 @@ async fn bind_lan_port(port_range: Range<u16>) -> Option<TcpListener> {
     None
 }
 
-pub fn print_qr_code(addr: SocketAddr) {
-    let url = format!("http://{}", addr);
+pub fn print_qr_code(addr: SocketAddr, auth_token: &AuthToken) {
+    let url = format!("http://{}?token={}", addr, auth_token.as_str());
 
     match qrcode::QrCode::new(&url) {
         Ok(code) => {
