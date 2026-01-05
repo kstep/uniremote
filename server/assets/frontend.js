@@ -16,6 +16,64 @@ function extractAuthToken() {
     }
 }
 
+// Notification system
+function createNotificationContainer() {
+    let container = document.getElementById('notification-container');
+    if (!container) {
+        container = document.createElement('div');
+        container.id = 'notification-container';
+        container.className = 'notification-container';
+        document.body.appendChild(container);
+    }
+    return container;
+}
+
+function showNotification(title, message, duration = 5000) {
+    const container = createNotificationContainer();
+    
+    const notification = document.createElement('div');
+    notification.className = 'notification';
+    
+    const content = document.createElement('div');
+    content.className = 'notification-content';
+    
+    const titleEl = document.createElement('div');
+    titleEl.className = 'notification-title';
+    titleEl.textContent = title;
+    
+    const messageEl = document.createElement('div');
+    messageEl.className = 'notification-message';
+    messageEl.textContent = message;
+    
+    content.appendChild(titleEl);
+    content.appendChild(messageEl);
+    
+    const closeBtn = document.createElement('button');
+    closeBtn.className = 'notification-close';
+    closeBtn.innerHTML = '&times;';
+    closeBtn.setAttribute('aria-label', 'Close notification');
+    
+    notification.appendChild(content);
+    notification.appendChild(closeBtn);
+    
+    container.appendChild(notification);
+    
+    const removeNotification = () => {
+        notification.classList.add('hiding');
+        setTimeout(() => {
+            if (notification.parentNode) {
+                notification.parentNode.removeChild(notification);
+            }
+        }, 300);
+    };
+    
+    closeBtn.addEventListener('click', removeNotification);
+    
+    if (duration > 0) {
+        setTimeout(removeNotification, duration);
+    }
+}
+
 // Extract remote ID from current URL path (/r/:id)
 function getRemoteId() {
     const match = window.location.pathname.match(/^\/r\/([^\/]+)/);
@@ -27,11 +85,13 @@ async function callRemoteAction(action, args = []) {
     const remoteId = getRemoteId();
     if (!remoteId) {
         console.error('No remote ID found in URL');
+        showNotification('Error', 'No remote ID found in URL');
         return;
     }
 
     if (!authToken) {
         console.error('No auth token available');
+        showNotification('Authentication Error', 'No authentication token available. Please scan the QR code again.');
         return;
     }
 
@@ -49,10 +109,41 @@ async function callRemoteAction(action, args = []) {
         });
 
         if (!response.ok) {
+            let errorMessage = `${response.status} ${response.statusText}`;
+            let errorTitle = 'Action Failed';
+            
+            // Try to get more specific error message from response
+            try {
+                const errorData = await response.json();
+                if (errorData.message) {
+                    errorMessage = errorData.message;
+                }
+            } catch (e) {
+                // If JSON parsing fails, use status text
+            }
+            
+            // Customize error messages based on status code
+            switch (response.status) {
+                case 401:
+                    errorTitle = 'Authentication Error';
+                    errorMessage = 'Invalid or expired authentication token. Please scan the QR code again.';
+                    break;
+                case 404:
+                    errorTitle = 'Not Found';
+                    errorMessage = 'Remote or action not found.';
+                    break;
+                case 500:
+                    errorTitle = 'Server Error';
+                    errorMessage = 'An internal server error occurred. Please try again.';
+                    break;
+            }
+            
             console.error(`API call failed: ${response.status} ${response.statusText}`);
+            showNotification(errorTitle, errorMessage);
         }
     } catch (error) {
         console.error('API call error:', error);
+        showNotification('Network Error', 'Failed to connect to the server. Please check your connection and try again.');
     }
 }
 
