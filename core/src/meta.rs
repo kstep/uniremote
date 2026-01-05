@@ -55,7 +55,9 @@ pub struct RemoteMeta {
 impl RemoteMeta {
     /// Check if the remote is compatible with the current platform
     pub fn is_compatible(&self) -> bool {
-        self.platform.contains(&PLATFORM)
+        self.platform.is_empty()
+            || self.platform.contains(&PLATFORM)
+            || self.platform.contains(&Platform::Legacy)
     }
 }
 
