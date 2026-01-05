@@ -13,25 +13,12 @@ mod auth;
 mod handlers;
 mod qr;
 
+pub mod args;
+
 use crate::{auth::AuthToken, qr::print_qr_code};
+pub use crate::args::BindAddress;
 
 const ASSETS_DIR: &str = "server/assets";
-
-#[derive(Debug, Clone)]
-pub enum BindAddress {
-    /// Bind to a specific IP with port range
-    Ip { ip: IpAddr, port_range: Range<u16> },
-    /// Bind to localhost with port range
-    Localhost { port_range: Range<u16> },
-    /// Bind to LAN IP with port range
-    Lan { port_range: Range<u16> },
-}
-
-impl BindAddress {
-    pub fn is_lan(&self) -> bool {
-        matches!(self, BindAddress::Lan { .. })
-    }
-}
 
 struct AppState {
     worker_tx: Sender<(RemoteId, CallActionRequest)>,
