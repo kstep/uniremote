@@ -2,11 +2,14 @@ use std::sync::Arc;
 
 use axum::{
     Json,
-    extract::{Path, Query, State},
+    extract::{Path, State},
     http::StatusCode,
     response::{Html, IntoResponse, Response},
 };
-use axum_extra::TypedHeader;
+use axum_extra::{
+    TypedHeader,
+    headers::{Authorization, authorization::Bearer},
+};
 use headers_accept::Accept;
 use mediatype::{
     MediaType,
@@ -16,7 +19,7 @@ use uniremote_core::{CallActionRequest, RemoteId};
 
 use crate::{
     AppState,
-    auth::{TokenQuery, validate_token},
+    auth::validate_token,
 };
 
 const CONTENT_TYPE_HTML: MediaType = MediaType::from_parts(TEXT, HTML, None, &[]);
@@ -110,10 +113,10 @@ pub async fn get_remote(
 pub async fn call_remote_action(
     Path(remote_id): Path<RemoteId>,
     State(state): State<Arc<AppState>>,
-    query: Query<TokenQuery>,
+    auth_header: Option<TypedHeader<Authorization<Bearer>>>,
     Json(payload): Json<CallActionRequest>,
 ) -> Result<Json<serde_json::Value>, StatusCode> {
-    validate_token(&query, &state)?;
+    validate_token(auth_header, &state)?;
 
     let _remote = state.remotes.get(&remote_id).ok_or(StatusCode::NOT_FOUND)?;
 

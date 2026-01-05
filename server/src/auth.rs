@@ -1,10 +1,13 @@
 use std::sync::Arc;
 
 use axum::{
-    extract::{FromRef, Query},
+    extract::FromRef,
     http::StatusCode,
 };
-use serde::Deserialize;
+use axum_extra::{
+    TypedHeader,
+    headers::{Authorization, authorization::Bearer},
+};
 
 use crate::AppState;
 
@@ -29,27 +32,46 @@ impl AuthToken {
     }
 }
 
-/// Query parameter extractor for token validation
-#[derive(Deserialize)]
-pub struct TokenQuery {
-    pub token: Option<String>,
-}
-
-/// Validate the authentication token from query parameters
-pub fn validate_token<S>(query: &Query<TokenQuery>, state: &S) -> Result<(), StatusCode>
+/// Validate the authentication token from Authorization Bearer header
+pub fn validate_token<S>(
+    auth_header: Option<TypedHeader<Authorization<Bearer>>>,
+    state: &S,
+) -> Result<(), StatusCode>
 where
     Arc<AppState>: FromRef<S>,
 {
     let app_state: Arc<AppState> = Arc::<AppState>::from_ref(state);
 
-    if query
-        .token
-        .as_ref()
-        .is_some_and(|token| token == app_state.auth_token.as_str())
-    {
-        Ok(())
-    } else {
-        tracing::warn!("unauthorized access attempt");
-        Err(StatusCode::UNAUTHORIZED)
+    match auth_header {
+        Some(TypedHeader(Authorization(bearer))) => {
+            if bearer.token() == app_state.auth_token.as_str() {
+                Ok(())
+            } else {
+                tracing::warn!("unauthorized access attempt with invalid token");
+                Err(StatusCode::UNAUTHORIZED)
+            }
+        }
+        None => {
+            tracing::warn!("unauthorized access attempt without authorization header");
+            Err(StatusCode::UNAUTHORIZED)
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_auth_token_generation() {
+        let token1 = AuthToken::generate();
+        let token2 = AuthToken::generate();
+        
+        // Tokens should be different
+        assert_ne!(token1.as_str(), token2.as_str());
+        
+        // Token should be hex-encoded (32 chars for 16 bytes)
+        assert_eq!(token1.as_str().len(), 32);
+        assert!(token1.as_str().chars().all(|c| c.is_ascii_hexdigit()));
     }
 }
