@@ -13,6 +13,5 @@ serde.workspace = true
 tracing.workspace = true
 
 walkdir = "2"
-xdg = "3.0"
 serde-java-properties = "0.2"
 quick-xml = { version = "0.38", features = ["serialize"] }

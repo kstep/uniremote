@@ -1620,7 +1620,6 @@ dependencies = [
  "uniremote-input",
  "uniremote-lua",
  "walkdir",
- "xdg",
 ]
 
 [[package]]

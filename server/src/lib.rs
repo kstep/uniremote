@@ -15,8 +15,8 @@ mod qr;
 
 pub mod args;
 
-use crate::{auth::AuthToken, qr::print_qr_code};
 pub use crate::args::BindAddress;
+use crate::{auth::AuthToken, qr::print_qr_code};
 
 const ASSETS_DIR: &str = "server/assets";
 
@@ -45,13 +45,14 @@ pub async fn run(
         .nest_service("/assets", ServeDir::new(ASSETS_DIR))
         .with_state(state);
 
-    let listener = bind_addr.bind()
+    let listener = bind_addr
+        .bind()
         .await
         .context("failed to bind to address")?;
 
     let local_addr = listener.local_addr()?;
     tracing::info!("server listening on {local_addr}");
-    
+
     // Only print QR code in LAN mode
     if matches!(bind_addr, BindAddress::Lan { .. }) {
         print_qr_code(local_addr, &auth_token);

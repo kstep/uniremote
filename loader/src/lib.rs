@@ -1,11 +1,19 @@
-use std::{collections::HashMap, fs::File, io::BufReader, path::{Path, PathBuf}, sync::Arc};
+use std::{
+    collections::HashMap,
+    fs::File,
+    io::BufReader,
+    path::{Path, PathBuf},
+    sync::Arc,
+};
 
 use anyhow::Context;
 use uniremote_core::{Layout, Remote, RemoteId, RemoteMeta};
 use uniremote_input::UInputBackend;
 use uniremote_lua::LuaState;
 
-pub fn load_remotes(remotes_dir: PathBuf) -> anyhow::Result<(HashMap<RemoteId, Remote>, HashMap<RemoteId, LuaState>)> {
+pub fn load_remotes(
+    remotes_dir: PathBuf,
+) -> anyhow::Result<(HashMap<RemoteId, Remote>, HashMap<RemoteId, LuaState>)> {
     let backend = Arc::new(UInputBackend::new().context("failed to initialize input backend")?);
 
     Ok(walkdir::WalkDir::new(&remotes_dir)
