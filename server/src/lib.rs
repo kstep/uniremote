@@ -1,11 +1,11 @@
-use std::{collections::HashMap, net::SocketAddr, ops::Range, sync::Arc};
+use std::{collections::HashMap, sync::Arc};
 
 use anyhow::Context;
 use axum::{
     Router,
     routing::{get, post},
 };
-use tokio::{net::TcpListener, sync::mpsc::Sender};
+use tokio::sync::mpsc::Sender;
 use tower_http::services::ServeDir;
 use uniremote_core::{CallActionRequest, Remote, RemoteId};
 
@@ -13,9 +13,11 @@ mod auth;
 mod handlers;
 mod qr;
 
+pub mod args;
+
+pub use crate::args::BindAddress;
 use crate::{auth::AuthToken, qr::print_qr_code};
 
-const LISTEN_PORT_RANGE: Range<u16> = 8000..8101;
 const ASSETS_DIR: &str = "server/assets";
 
 struct AppState {
@@ -27,6 +29,7 @@ struct AppState {
 pub async fn run(
     worker_tx: Sender<(RemoteId, CallActionRequest)>,
     remotes: HashMap<RemoteId, Remote>,
+    bind_addr: BindAddress,
 ) -> anyhow::Result<()> {
     let auth_token = AuthToken::generate();
     let state = Arc::new(AppState {
@@ -42,33 +45,20 @@ pub async fn run(
         .nest_service("/assets", ServeDir::new(ASSETS_DIR))
         .with_state(state);
 
-    let listener = bind_lan_port(LISTEN_PORT_RANGE)
+    let listener = bind_addr
+        .bind()
         .await
-        .context("failed to bind to lan port")?;
+        .context("failed to bind to address")?;
 
     let local_addr = listener.local_addr()?;
     tracing::info!("server listening on {local_addr}");
-    print_qr_code(local_addr, &auth_token);
+
+    // Only print QR code in LAN mode
+    if matches!(bind_addr, BindAddress::Lan { .. }) {
+        print_qr_code(local_addr, &auth_token);
+    }
 
     axum::serve(listener, app).await?;
 
     Ok(())
-}
-
-async fn bind_lan_port(port_range: Range<u16>) -> Option<TcpListener> {
-    let ip = local_ip_address::local_ip().ok()?;
-
-    if ip.is_loopback() {
-        return None;
-    }
-
-    for port in port_range {
-        let addr = SocketAddr::new(ip, port);
-        let Ok(listener) = TcpListener::bind(addr).await else {
-            continue;
-        };
-        return Some(listener);
-    }
-
-    None
 }
