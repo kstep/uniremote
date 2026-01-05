@@ -2,7 +2,7 @@ use std::sync::Arc;
 
 use axum::{
     Json,
-    extract::{Path, State},
+    extract::{Path, Query, State},
     http::StatusCode,
     response::{Html, IntoResponse, Response},
 };
@@ -15,6 +15,7 @@ use mediatype::{
 use uniremote_core::{CallActionRequest, RemoteId};
 
 use crate::AppState;
+use crate::auth::{TokenQuery, validate_token};
 
 const CONTENT_TYPE_HTML: MediaType = MediaType::from_parts(TEXT, HTML, None, &[]);
 
@@ -34,8 +35,12 @@ static HTML_FOOTER: &str = r#"</body></html>"#;
 
 pub async fn list_remotes(
     State(state): State<Arc<AppState>>,
+    query: Query<TokenQuery>,
     accept: Option<TypedHeader<Accept>>,
-) -> Response {
+) -> Result<Response, StatusCode> {
+    // Validate token
+    validate_token(&query, &state)?;
+
     let wants_html = accept.as_ref().is_some_and(|TypedHeader(accept)| {
         accept
             .media_types()
@@ -43,9 +48,9 @@ pub async fn list_remotes(
     });
 
     if wants_html {
-        list_remotes_html(&state)
+        Ok(list_remotes_html(&state))
     } else {
-        list_remotes_json(&state)
+        Ok(list_remotes_json(&state))
     }
 }
 
@@ -84,7 +89,11 @@ fn list_remotes_json(state: &AppState) -> Response {
 pub async fn get_remote(
     Path(remote_id): Path<RemoteId>,
     State(state): State<Arc<AppState>>,
+    query: Query<TokenQuery>,
 ) -> Result<Html<String>, StatusCode> {
+    // Validate token
+    validate_token(&query, &state)?;
+
     let remote = state.remotes.get(&remote_id).ok_or(StatusCode::NOT_FOUND)?;
 
     let mut output = String::from(HTML_HEADER);
@@ -102,8 +111,12 @@ pub async fn get_remote(
 pub async fn call_remote_action(
     Path(remote_id): Path<RemoteId>,
     State(state): State<Arc<AppState>>,
+    query: Query<TokenQuery>,
     Json(payload): Json<CallActionRequest>,
 ) -> Result<Json<serde_json::Value>, StatusCode> {
+    // Validate token
+    validate_token(&query, &state)?;
+
     let _remote = state.remotes.get(&remote_id).ok_or(StatusCode::NOT_FOUND)?;
 
     tracing::info!("call action '{}' on remote '{remote_id}'", payload.action);

@@ -1,3 +1,19 @@
+// Extract and store auth token from URL
+let authToken = null;
+
+function extractAuthToken() {
+    const urlParams = new URLSearchParams(window.location.search);
+    const token = urlParams.get('token');
+    if (token) {
+        authToken = token;
+        // Store in sessionStorage for persistence across page navigations
+        sessionStorage.setItem('authToken', token);
+    } else {
+        // Try to retrieve from sessionStorage
+        authToken = sessionStorage.getItem('authToken');
+    }
+}
+
 // Extract remote ID from current URL path (/r/:id)
 function getRemoteId() {
     const match = window.location.pathname.match(/^\/r\/([^\/]+)/);
@@ -12,8 +28,13 @@ async function callRemoteAction(action, args = []) {
         return;
     }
 
+    if (!authToken) {
+        console.error('No auth token available');
+        return;
+    }
+
     try {
-        const response = await fetch(`/api/r/${remoteId}/call`, {
+        const response = await fetch(`/api/r/${remoteId}/call?token=${authToken}`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
@@ -180,7 +201,11 @@ function initializeRemote() {
 
 // Initialize when DOM is ready
 if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', initializeRemote);
+    document.addEventListener('DOMContentLoaded', () => {
+        extractAuthToken();
+        initializeRemote();
+    });
 } else {
+    extractAuthToken();
     initializeRemote();
 }
