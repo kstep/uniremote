@@ -1,6 +1,7 @@
-use std::{net::IpAddr, ops::Range, str::FromStr};
+use std::{net::{IpAddr, Ipv4Addr, SocketAddr}, ops::Range, str::FromStr};
 
 use clap::Parser;
+use tokio::net::TcpListener;
 
 const DEFAULT_PORT_RANGE: Range<u16> = 8000..8101;
 
@@ -113,6 +114,42 @@ impl BindAddress {
     pub fn is_lan(&self) -> bool {
         matches!(self, BindAddress::Lan { .. })
     }
+
+    pub async fn bind(&self) -> Option<TcpListener> {
+        match self {
+            BindAddress::Ip { ip, port_range } => {
+                bind_to_ip_port(*ip, port_range.clone()).await
+            }
+            BindAddress::Localhost { port_range } => {
+                let localhost = IpAddr::V4(Ipv4Addr::LOCALHOST);
+                bind_to_ip_port(localhost, port_range.clone()).await
+            }
+            BindAddress::Lan { port_range } => {
+                bind_lan_port(port_range.clone()).await
+            }
+        }
+    }
+}
+
+async fn bind_to_ip_port(ip: IpAddr, port_range: Range<u16>) -> Option<TcpListener> {
+    for port in port_range {
+        let addr = SocketAddr::new(ip, port);
+        let Ok(listener) = TcpListener::bind(addr).await else {
+            continue;
+        };
+        return Some(listener);
+    }
+    None
+}
+
+async fn bind_lan_port(port_range: Range<u16>) -> Option<TcpListener> {
+    let ip = local_ip_address::local_ip().ok()?;
+
+    if ip.is_loopback() {
+        return None;
+    }
+
+    bind_to_ip_port(ip, port_range).await
 }
 
 fn parse_port_range(port_spec: &str) -> anyhow::Result<Range<u16>> {
