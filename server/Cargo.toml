@@ -21,7 +21,6 @@ dotenvy = "0.15"
 tower-http = { version = "0.6", features = ["fs", "cors"] }
 rand = "0.8"
 hex = "0.4"
-urlencoding = "2.1"
 
 anyhow.workspace = true
 tokio.workspace = true

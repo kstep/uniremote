@@ -46,23 +46,20 @@ pub async fn list_remotes(
             .any(|mime| mime.essence() == CONTENT_TYPE_HTML)
     });
 
-    let token = query.token.as_deref().unwrap_or("");
-
     if wants_html {
-        Ok(list_remotes_html(&state, token))
+        Ok(list_remotes_html(&state))
     } else {
         Ok(list_remotes_json(&state))
     }
 }
 
-fn list_remotes_html(state: &AppState, token: &str) -> Response {
+fn list_remotes_html(state: &AppState) -> Response {
     let mut html = String::from(HTML_HEADER);
     html.push_str(r#"<h1>Available Remotes</h1><ul>"#);
 
     for (id, remote) in &state.remotes {
         html.push_str(&format!(
-            r#"<li><a href="/r/{id}?token={}">{}</a></li>"#,
-            urlencoding::encode(token),
+            r#"<li><a href="/r/{id}">{}</a></li>"#,
             remote.meta.name
         ));
     }
@@ -98,13 +95,9 @@ pub async fn get_remote(
 
     let remote = state.remotes.get(&remote_id).ok_or(StatusCode::NOT_FOUND)?;
 
-    let token = query.token.as_deref().unwrap_or("");
     let mut output = String::from(HTML_HEADER);
 
-    output.push_str(&format!(
-        "<div class=\"backlink\"><a href=\"/?token={}\">&larr; Back to remotes</a></div>",
-        urlencoding::encode(token)
-    ));
+    output.push_str("<div class=\"backlink\"><a href=\"/\">&larr; Back to remotes</a></div>");
     output.push_str("<h1>");
     output.push_str(&remote.meta.name);
     output.push_str("</h1>");
