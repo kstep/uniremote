@@ -39,11 +39,10 @@ where
 {
     let app_state: Arc<crate::AppState> = Arc::<crate::AppState>::from_ref(state);
     
-    match &query.token {
-        Some(token) if token == app_state.auth_token.as_str() => Ok(()),
-        _ => {
-            tracing::warn!("unauthorized access attempt");
-            Err(StatusCode::FORBIDDEN)
-        }
+    if query.token.as_ref().is_some_and(|token| token == app_state.auth_token.as_str()) {
+        Ok(())
+    } else {
+        tracing::warn!("unauthorized access attempt");
+        Err(StatusCode::FORBIDDEN)
     }
 }
