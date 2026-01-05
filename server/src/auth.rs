@@ -13,7 +13,7 @@ use crate::AppState;
 pub struct AuthToken(String);
 
 impl AuthToken {
-    const AUTH_TOKEN_LENGTH: usize = 32;
+    const AUTH_TOKEN_LENGTH: usize = 16;
 
     pub fn generate() -> Self {
         use rand::RngCore;

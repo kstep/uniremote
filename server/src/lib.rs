@@ -11,8 +11,9 @@ use uniremote_core::{CallActionRequest, Remote, RemoteId};
 
 mod auth;
 mod handlers;
+mod qr;
 
-use auth::AuthToken;
+use crate::{auth::AuthToken, qr::print_qr_code};
 
 const LISTEN_PORT_RANGE: Range<u16> = 8000..8101;
 const ASSETS_DIR: &str = "server/assets";
@@ -70,24 +71,4 @@ async fn bind_lan_port(port_range: Range<u16>) -> Option<TcpListener> {
     }
 
     None
-}
-
-pub fn print_qr_code(addr: SocketAddr, auth_token: &AuthToken) {
-    let url = format!("http://{addr}?token={}", auth_token.as_str());
-
-    match qrcode::QrCode::new(&url) {
-        Ok(code) => {
-            let string = code
-                .render::<char>()
-                .quiet_zone(false)
-                .module_dimensions(2, 1)
-                .build();
-            println!("\n{}\n", string);
-            println!("Scan QR code or visit: {}", url);
-        }
-        Err(error) => {
-            tracing::warn!("failed to generate qr code: {error}");
-            println!("Visit: {}", url);
-        }
-    }
 }
