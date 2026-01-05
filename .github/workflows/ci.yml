@@ -41,10 +41,10 @@ jobs:
         run: cargo +nightly fmt --all --check
       
       - name: Run clippy
-        run: cargo clippy --workspace --all-targets --all-features -- -D warnings
+        run: cargo +stable clippy --workspace --all-targets --all-features -- -D warnings
       
       - name: Build
-        run: cargo build --workspace --verbose
+        run: cargo +stable build --workspace --verbose
       
       - name: Run tests
-        run: cargo test --workspace --verbose
+        run: cargo +stable test --workspace --verbose
