@@ -304,19 +304,19 @@ fn render_style(
     if let Some(color) = color {
         output.push_str("--default-color:");
         output.push_str(color);
-        output.push_str(";");
+        output.push(';');
     }
 
     if let Some(color) = lightcolor {
         output.push_str("--light-color:");
         output.push_str(color);
-        output.push_str(";");
+        output.push(';');
     }
 
     if let Some(color) = darkcolor {
         output.push_str("--dark-color:");
         output.push_str(color);
-        output.push_str(";");
+        output.push(';');
     }
 
     if let Some(dark) = dark {
@@ -327,7 +327,7 @@ fn render_style(
         render_theme(output, "light", light);
     }
 
-    output.push_str("\"");
+    output.push('"');
 }
 
 fn render_theme(output: &mut String, name: &str, theme: &Theme) {
@@ -336,27 +336,27 @@ fn render_theme(output: &mut String, name: &str, theme: &Theme) {
         output.push_str(name);
         output.push_str("-default-color:");
         output.push_str(color);
-        output.push_str(";");
+        output.push(';');
     }
     if let Some(color) = &theme.active {
         output.push_str("--theme-");
         output.push_str(name);
         output.push_str("-active-color:");
         output.push_str(color);
-        output.push_str(";");
+        output.push(';');
     }
     if let Some(color) = &theme.normal {
         output.push_str("--theme-");
         output.push_str(name);
         output.push_str("-normal-color:");
         output.push_str(color);
-        output.push_str(";");
+        output.push(';');
     }
     if let Some(color) = &theme.focus {
         output.push_str("--theme-");
         output.push_str(name);
         output.push_str("-focus-color:");
         output.push_str(color);
-        output.push_str(";");
+        output.push(';');
     }
 }

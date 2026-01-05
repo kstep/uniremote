@@ -80,7 +80,7 @@ fn list_remotes_json(state: &AppState) -> Response {
         .into_iter()
         .map(|(id, remote)| {
             serde_json::json!({
-                "id": &*id,
+                "id": id,
                 "name": remote.meta.name,
             })
         })
