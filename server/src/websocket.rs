@@ -5,13 +5,51 @@ use axum::{
         Path, State, WebSocketUpgrade,
         ws::{Message, WebSocket},
     },
-    http::HeaderMap,
     response::Response,
 };
+use axum_extra::TypedHeader;
 use futures_util::{sink::SinkExt, stream::StreamExt};
+use headers::{Header, HeaderName, HeaderValue};
 use uniremote_core::{ActionId, CallActionRequest, RemoteId};
 
 use crate::{AppState, auth::AuthToken};
+
+/// Typed header for Sec-WebSocket-Protocol
+#[derive(Debug, Clone)]
+pub struct SecWebSocketProtocol(String);
+
+impl Header for SecWebSocketProtocol {
+    fn name() -> &'static HeaderName {
+        static NAME: HeaderName = HeaderName::from_static("sec-websocket-protocol");
+        &NAME
+    }
+
+    fn decode<'i, I>(values: &mut I) -> Result<Self, headers::Error>
+    where
+        I: Iterator<Item = &'i HeaderValue>,
+    {
+        let value = values.next().ok_or_else(headers::Error::invalid)?;
+        let s = value.to_str().map_err(|_| headers::Error::invalid())?;
+        Ok(SecWebSocketProtocol(s.to_string()))
+    }
+
+    fn encode<E: Extend<HeaderValue>>(&self, values: &mut E) {
+        if let Ok(value) = HeaderValue::from_str(&self.0) {
+            values.extend(std::iter::once(value));
+        }
+    }
+}
+
+impl SecWebSocketProtocol {
+    /// Extract the bearer token from the protocol string (format: "bearer.{token}")
+    pub fn bearer_token(&self) -> Option<&str> {
+        // Split by comma in case multiple protocols are specified
+        self.0.split(',').find_map(|protocol| {
+            let protocol = protocol.trim();
+            protocol.strip_prefix("bearer.")
+        })
+    }
+}
 
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 #[serde(tag = "type")]
@@ -39,20 +77,13 @@ pub enum ClientMessage {
 pub async fn websocket_handler(
     Path(remote_id): Path<RemoteId>,
     State(state): State<Arc<AppState>>,
-    headers: HeaderMap,
+    protocol: Option<TypedHeader<SecWebSocketProtocol>>,
     ws: WebSocketUpgrade,
 ) -> Result<Response, axum::http::StatusCode> {
     // Extract token from Sec-WebSocket-Protocol header (format: "bearer.{token}")
-    let token = headers
-        .get("sec-websocket-protocol")
-        .and_then(|h| h.to_str().ok())
-        .and_then(|protocols| {
-            // Split by comma in case multiple protocols are specified
-            protocols.split(',').find_map(|protocol| {
-                let protocol = protocol.trim();
-                protocol.strip_prefix("bearer.")
-            })
-        })
+    let token = protocol
+        .as_ref()
+        .and_then(|TypedHeader(p)| p.bearer_token())
         .ok_or(axum::http::StatusCode::UNAUTHORIZED)?;
 
     // Validate token
@@ -67,7 +98,7 @@ pub async fn websocket_handler(
 
     // Accept the WebSocket with the same protocol to complete the handshake
     Ok(ws
-        .protocols([format!("bearer.{}", token)])
+        .protocols([format!("bearer.{token}")])
         .on_upgrade(move |socket| handle_websocket(socket, remote_id, state)))
 }
 
