@@ -298,18 +298,16 @@ textarea.text {
     background: var(--theme-light-default-color, var(--default-color, transparent));
 }
 
-/* Individual tab container - only header takes space by default */
+/* Individual tab container - use display: contents for inactive tabs */
 .tab {
     flex: 1 1 0;
     min-width: 0;
-    max-height: 0;
-    overflow: visible;
+    display: contents;
 }
 
-/* Active tab expands to show panel */
+/* Active tab needs proper flex container */
 .tab:has(input[type="radio"]:checked) {
     flex: 1 1 100%;
-    max-height: none;
     display: flex;
     flex-direction: column;
 }
@@ -321,6 +319,8 @@ textarea.text {
 
 /* Tab headers - all visible in a row at the top, equal width */
 .tab .tab-header {
+    flex: 1 1 0;
+    min-width: 0;
     padding: 0.75rem 1rem;
     background: var(--dark-color, rgba(0, 0, 0, 0.05));
     border-right: 1px solid;
