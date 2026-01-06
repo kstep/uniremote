@@ -8,6 +8,7 @@ use uniremote_input::UInputBackend;
 pub mod keyboard;
 pub mod mouse;
 pub mod script;
+pub mod server;
 pub mod state;
 
 pub async fn run(

@@ -25,24 +25,21 @@ pub use crate::args::BindAddress;
 use crate::{auth::AuthToken, qr::print_qr_code};
 
 const ASSETS_DIR: &str = "server/assets";
-const BROADCAST_CHANNEL_SIZE: usize = 100;
 
 struct AppState {
     worker_tx: Sender<(RemoteId, CallActionRequest)>,
     remotes: HashMap<RemoteId, Remote>,
     auth_token: AuthToken,
-    broadcast_tx: broadcast::Sender<websocket::ServerMessage>,
+    broadcast_tx: broadcast::Sender<serde_json::Value>,
 }
 
 pub async fn run(
     worker_tx: Sender<(RemoteId, CallActionRequest)>,
     remotes: HashMap<RemoteId, Remote>,
     bind_addr: BindAddress,
+    broadcast_tx: broadcast::Sender<serde_json::Value>,
 ) -> anyhow::Result<()> {
     let auth_token = AuthToken::generate();
-
-    // Create broadcast channel for server-to-client messages
-    let (broadcast_tx, _) = broadcast::channel(BROADCAST_CHANNEL_SIZE);
 
     let listener = bind_addr
         .bind()
