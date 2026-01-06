@@ -359,10 +359,8 @@ fn render_tab(output: &mut Buffer, tab: &Tab, is_active: bool, group_id: &Option
 
     if let Some(text) = &tab.text {
         output.push_str("<label class=\"tab-header\" for=\"tab-");
-        
         // Use same id generation logic
         generate_tab_id(output);
-        
         output.push_str("\">");
         output.push_html(text);
         output.push_str("</label>");
