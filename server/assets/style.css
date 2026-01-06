@@ -298,10 +298,18 @@ textarea.text {
     background: var(--theme-light-default-color, var(--default-color, transparent));
 }
 
-/* Individual tab container */
+/* Individual tab container - only header takes space by default */
 .tab {
     flex: 1 1 0;
     min-width: 0;
+    max-height: 0;
+    overflow: visible;
+}
+
+/* Active tab expands to show panel */
+.tab:has(input[type="radio"]:checked) {
+    flex: 1 1 100%;
+    max-height: none;
     display: flex;
     flex-direction: column;
 }
@@ -321,7 +329,6 @@ textarea.text {
     color: var(--theme-light-normal-color, var(--light-color, inherit));
     cursor: pointer;
     user-select: none;
-    order: -1;
 }
 
 .tab:last-of-type .tab-header {
@@ -342,7 +349,6 @@ textarea.text {
 .tab .tab-panel {
     display: none;
     padding: 1rem;
-    flex-basis: 100%;
 }
 
 /* Show only the active tab panel */
