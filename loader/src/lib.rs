@@ -161,6 +161,11 @@ fn load_remote(
         }
     }
 
+    if !lua.detect().context("failed to run events.detect()")? {
+        tracing::info!("skipping remote {remote_id} because event.detect() returned false");
+        return Ok(None);
+    }
+
     if let Err(error) = lua.trigger_event("create") {
         tracing::warn!("failed to trigger create event for remote {remote_id}: {error:#}");
     }

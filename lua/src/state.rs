@@ -47,6 +47,15 @@ impl LuaState {
         Ok(settings)
     }
 
+    pub fn detect(&self) -> anyhow::Result<bool> {
+        let globals = self.lua.globals();
+        let events: Table = globals.get("events")?;
+        if let Ok(event_fn) = events.get::<Function>("detect") {
+            return Ok(event_fn.call::<bool>(())?);
+        }
+        Ok(true)
+    }
+
     pub fn trigger_event(&self, event_name: &str) -> anyhow::Result<()> {
         let globals = self.lua.globals();
         let events: Table = globals.get("events")?;
