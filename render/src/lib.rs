@@ -462,6 +462,8 @@ fn render_id(output: &mut Buffer, id: &Option<LayoutId>) {
     if let Some(id) = id {
         output.push_str("id=\"");
         output.push_html(id);
+        output.push_str("\" data-widget-id=\"");
+        output.push_html(id);
         output.push_str("\" ");
     }
 }

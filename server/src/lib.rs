@@ -85,3 +85,46 @@ pub async fn run(
 
     Ok(())
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_sse_message_serialization() {
+        let message = SseMessage {
+            action: "update".to_string(),
+            args: serde_json::json!({
+                "id": "widget-id",
+                "text": "new text"
+            }),
+        };
+
+        let json = serde_json::to_string(&message).unwrap();
+        let parsed: serde_json::Value = serde_json::from_str(&json).unwrap();
+
+        assert_eq!(parsed["action"], "update");
+        assert_eq!(parsed["args"]["id"], "widget-id");
+        assert_eq!(parsed["args"]["text"], "new text");
+    }
+
+    #[test]
+    fn test_sse_message_with_multiple_properties() {
+        let message = SseMessage {
+            action: "update".to_string(),
+            args: serde_json::json!({
+                "id": "slider-1",
+                "progress": 75,
+                "visibility": "visible"
+            }),
+        };
+
+        let json = serde_json::to_string(&message).unwrap();
+        let parsed: serde_json::Value = serde_json::from_str(&json).unwrap();
+
+        assert_eq!(parsed["action"], "update");
+        assert_eq!(parsed["args"]["id"], "slider-1");
+        assert_eq!(parsed["args"]["progress"], 75);
+        assert_eq!(parsed["args"]["visibility"], "visible");
+    }
+}

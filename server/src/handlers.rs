@@ -2,7 +2,7 @@ use std::sync::Arc;
 
 use axum::{
     Json,
-    extract::{Path, Query, State},
+    extract::{Path, State},
     http::StatusCode,
     response::{Html, IntoResponse, Response, sse::{Event, Sse}},
 };
@@ -16,7 +16,6 @@ use mediatype::{
     MediaType,
     names::{HTML, TEXT},
 };
-use serde::Deserialize;
 use std::convert::Infallible;
 use uniremote_core::{CallActionRequest, RemoteId};
 use uniremote_render::{Buffer, RenderHtml};
@@ -121,26 +120,12 @@ pub async fn call_remote_action(
     })))
 }
 
-#[derive(Deserialize)]
-pub struct SseQuery {
-    token: Option<String>,
-}
-
 pub async fn sse_handler(
     Path(remote_id): Path<RemoteId>,
     State(state): State<Arc<AppState>>,
-    Query(query): Query<SseQuery>,
     auth_header: Option<TypedHeader<Authorization<Bearer>>>,
 ) -> Result<Sse<impl Stream<Item = Result<Event, Infallible>>>, StatusCode> {
-    // Check token from query param first (for EventSource), then fall back to header
-    if let Some(token) = query.token {
-        if token != state.auth_token.as_str() {
-            tracing::warn!("unauthorized SSE access attempt with invalid token from query param");
-            return Err(StatusCode::UNAUTHORIZED);
-        }
-    } else {
-        validate_token(auth_header, &state)?;
-    }
+    validate_token(auth_header, &state)?;
 
     // Verify the remote exists
     let _remote = state.remotes.get(&remote_id).ok_or(StatusCode::NOT_FOUND)?;

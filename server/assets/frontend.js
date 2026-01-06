@@ -293,45 +293,81 @@ function initializeRemote() {
 
 // SSE Connection for server updates
 let eventSource = null;
+let sseAbortController = null;
 
-function connectSSE() {
+async function connectSSE() {
     const remoteId = getRemoteId();
     if (!remoteId || !authToken) {
         return;
     }
 
     // Close existing connection if any
-    if (eventSource) {
-        eventSource.close();
+    if (sseAbortController) {
+        sseAbortController.abort();
     }
 
-    const sseUrl = `/api/r/${remoteId}/events?token=${authToken}`;
-    eventSource = new EventSource(sseUrl);
+    sseAbortController = new AbortController();
+    const sseUrl = `/api/r/${remoteId}/events`;
 
-    eventSource.onopen = () => {
-        console.log('SSE connection established');
-    };
+    try {
+        const response = await fetch(sseUrl, {
+            method: 'GET',
+            headers: {
+                'Authorization': `Bearer ${authToken}`,
+                'Accept': 'text/event-stream',
+            },
+            signal: sseAbortController.signal,
+        });
 
-    eventSource.onmessage = (event) => {
-        try {
-            const message = JSON.parse(event.data);
-            console.log('Received SSE message:', message);
-            handleSSEMessage(message);
-        } catch (error) {
-            console.error('Failed to parse SSE message:', error, event.data);
+        if (!response.ok) {
+            throw new Error(`SSE connection failed: ${response.status}`);
         }
-    };
 
-    eventSource.onerror = (error) => {
+        console.log('SSE connection established');
+
+        const reader = response.body.getReader();
+        const decoder = new TextDecoder();
+        let buffer = '';
+
+        while (true) {
+            const { done, value } = await reader.read();
+            
+            if (done) {
+                console.log('SSE connection closed by server');
+                break;
+            }
+
+            buffer += decoder.decode(value, { stream: true });
+            const lines = buffer.split('\n');
+            buffer = lines.pop(); // Keep incomplete line in buffer
+
+            for (const line of lines) {
+                if (line.startsWith('data: ')) {
+                    const data = line.substring(6);
+                    try {
+                        const message = JSON.parse(data);
+                        console.log('Received SSE message:', message);
+                        handleSSEMessage(message);
+                    } catch (error) {
+                        console.error('Failed to parse SSE message:', error, data);
+                    }
+                }
+            }
+        }
+    } catch (error) {
+        if (error.name === 'AbortError') {
+            console.log('SSE connection aborted');
+            return;
+        }
+        
         console.error('SSE connection error:', error);
-        eventSource.close();
         
         // Reconnect after a delay
         setTimeout(() => {
             console.log('Attempting to reconnect SSE...');
             connectSSE();
         }, 5000);
-    };
+    }
 }
 
 // Handle SSE messages from server
