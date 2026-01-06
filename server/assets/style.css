@@ -346,7 +346,6 @@ textarea.text {
 .tab input[type="radio"]:checked + .tab-header {
     background: var(--theme-light-active-color, rgba(0, 0, 0, 0.15));
     border-bottom: 2px solid var(--theme-light-active-color, var(--light-color, currentColor));
-    font-weight: 600;
 }
 
 /* Tab panels - hidden by default, take full width */
