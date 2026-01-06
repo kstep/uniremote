@@ -2,13 +2,16 @@ use std::sync::Arc;
 
 use axum::{
     extract::{
-        ws::{Message, WebSocket},
         Path, State, WebSocketUpgrade,
+        ws::{Message, WebSocket},
     },
     response::Response,
 };
-use axum_extra::{TypedHeader, headers::{Authorization, authorization::Bearer}};
-use futures_util::{stream::StreamExt, sink::SinkExt};
+use axum_extra::{
+    TypedHeader,
+    headers::{Authorization, authorization::Bearer},
+};
+use futures_util::{sink::SinkExt, stream::StreamExt};
 use uniremote_core::{ActionId, CallActionRequest, RemoteId};
 
 use crate::{AppState, auth::validate_token};
@@ -22,9 +25,7 @@ pub enum ServerMessage {
         args: serde_json::Value,
     },
     #[serde(rename = "error")]
-    Error {
-        message: String,
-    },
+    Error { message: String },
 }
 
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
@@ -46,17 +47,20 @@ pub async fn websocket_handler(
 ) -> Result<Response, axum::http::StatusCode> {
     validate_token(auth_header, &state)?;
 
-    let _remote = state.remotes.get(&remote_id).ok_or(axum::http::StatusCode::NOT_FOUND)?;
+    let _remote = state
+        .remotes
+        .get(&remote_id)
+        .ok_or(axum::http::StatusCode::NOT_FOUND)?;
 
     Ok(ws.on_upgrade(move |socket| handle_websocket(socket, remote_id, state)))
 }
 
 async fn handle_websocket(socket: WebSocket, remote_id: RemoteId, state: Arc<AppState>) {
     let (mut sender, mut receiver) = socket.split();
-    
+
     // Subscribe to broadcast channel for server-to-client messages
     let mut broadcast_rx = state.broadcast_tx.subscribe();
-    
+
     // Spawn a task to forward broadcast messages to this WebSocket
     let mut send_task = tokio::spawn(async move {
         while let Ok(msg) = broadcast_rx.recv().await {
@@ -67,13 +71,13 @@ async fn handle_websocket(socket: WebSocket, remote_id: RemoteId, state: Arc<App
                     continue;
                 }
             };
-            
+
             if sender.send(Message::Text(json.into())).await.is_err() {
                 break;
             }
         }
     });
-    
+
     // Handle incoming messages from client
     let worker_tx = state.worker_tx.clone();
     let mut recv_task = tokio::spawn(async move {
@@ -87,16 +91,16 @@ async fn handle_websocket(socket: WebSocket, remote_id: RemoteId, state: Arc<App
                             continue;
                         }
                     };
-                    
+
                     match client_msg {
                         ClientMessage::CallAction { action, args } => {
-                            let request = CallActionRequest {
-                                action,
-                                args,
-                            };
-                            
-                            tracing::info!("websocket call action '{}' on remote '{remote_id}'", request.action);
-                            
+                            let request = CallActionRequest { action, args };
+
+                            tracing::info!(
+                                "websocket call action '{}' on remote '{remote_id}'",
+                                request.action
+                            );
+
                             if let Err(e) = worker_tx.send((remote_id.clone(), request)).await {
                                 tracing::error!("failed to send action to worker: {e}");
                             }
@@ -112,7 +116,7 @@ async fn handle_websocket(socket: WebSocket, remote_id: RemoteId, state: Arc<App
             }
         }
     });
-    
+
     // Wait for either task to finish
     tokio::select! {
         _ = &mut send_task => recv_task.abort(),

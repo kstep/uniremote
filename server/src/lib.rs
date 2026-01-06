@@ -6,7 +6,7 @@ use axum::{
     http::{Method, header},
     routing::{get, post},
 };
-use tokio::sync::{mpsc::Sender, broadcast};
+use tokio::sync::{broadcast, mpsc::Sender};
 use tower_http::{
     cors::{AllowOrigin, CorsLayer},
     services::ServeDir,
@@ -39,7 +39,7 @@ pub async fn run(
     bind_addr: BindAddress,
 ) -> anyhow::Result<()> {
     let auth_token = AuthToken::generate();
-    
+
     // Create broadcast channel for server-to-client messages
     let (broadcast_tx, _) = broadcast::channel(100);
 
