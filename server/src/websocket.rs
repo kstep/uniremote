@@ -83,11 +83,11 @@ pub async fn websocket_handler(
 async fn handle_websocket(socket: WebSocket, remote_id: RemoteId, state: Arc<AppState>) {
     let (mut sender, mut receiver) = socket.split();
 
-    // Get the broadcast channel for this specific remote
-    let broadcast_tx = match state.broadcast_channels.get(&remote_id) {
-        Some(tx) => tx,
+    // Get the broadcast channel for this specific remote from RemoteWithChannel
+    let broadcast_tx = match state.remotes.get(&remote_id) {
+        Some(remote_with_channel) => &remote_with_channel.broadcast_tx,
         None => {
-            tracing::error!("no broadcast channel found for remote: {remote_id}");
+            tracing::error!("no remote found for: {remote_id}");
             return;
         }
     };
