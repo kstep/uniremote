@@ -6,13 +6,13 @@ use axum::{
     http::{Method, header},
     routing::{get, post},
 };
-use tokio::sync::{broadcast, mpsc::Sender};
+use tokio::sync::mpsc::Sender;
 use tower_http::{
     cors::{AllowOrigin, CorsLayer},
     services::ServeDir,
     trace::TraceLayer,
 };
-use uniremote_core::{CallActionRequest, Remote, RemoteId};
+use uniremote_core::{CallActionRequest, Remote, RemoteId, SseBroadcaster, SseMessage};
 
 mod auth;
 mod handlers;
@@ -26,27 +26,25 @@ use crate::{auth::AuthToken, qr::print_qr_code};
 const ASSETS_DIR: &str = "server/assets";
 const SSE_CHANNEL_SIZE: usize = 100;
 
-/// SSE message to be sent to connected clients
-#[derive(Clone, Debug, serde::Serialize)]
-pub struct SseMessage {
-    pub action: String,
-    pub args: serde_json::Value,
-}
-
 struct AppState {
     worker_tx: Sender<(RemoteId, CallActionRequest)>,
     remotes: HashMap<RemoteId, Remote>,
     auth_token: AuthToken,
-    sse_tx: broadcast::Sender<(RemoteId, SseMessage)>,
+    sse_tx: SseBroadcaster,
+}
+
+pub fn create_sse_broadcaster() -> SseBroadcaster {
+    let (tx, _) = tokio::sync::broadcast::channel(SSE_CHANNEL_SIZE);
+    tx
 }
 
 pub async fn run(
     worker_tx: Sender<(RemoteId, CallActionRequest)>,
     remotes: HashMap<RemoteId, Remote>,
     bind_addr: BindAddress,
+    sse_tx: SseBroadcaster,
 ) -> anyhow::Result<()> {
     let auth_token = AuthToken::generate();
-    let (sse_tx, _) = broadcast::channel(SSE_CHANNEL_SIZE);
 
     let listener = bind_addr
         .bind()

@@ -22,3 +22,13 @@ pub struct CallActionRequest {
     #[serde(default)]
     pub args: Option<Vec<serde_json::Value>>,
 }
+
+/// SSE message to be sent to connected clients
+#[derive(Clone, Debug, Serialize)]
+pub struct SseMessage {
+    pub action: String,
+    pub args: serde_json::Value,
+}
+
+/// Type alias for SSE broadcaster
+pub type SseBroadcaster = tokio::sync::broadcast::Sender<(RemoteId, SseMessage)>;

@@ -2,18 +2,26 @@ use std::{collections::HashMap, sync::Arc};
 
 pub use state::LuaState;
 use tokio::sync::mpsc::Receiver;
-use uniremote_core::{CallActionRequest, RemoteId};
+use uniremote_core::{CallActionRequest, RemoteId, SseBroadcaster};
 use uniremote_input::UInputBackend;
 
 pub mod keyboard;
 pub mod mouse;
 pub mod script;
+pub mod server;
 pub mod state;
 
 pub async fn run(
     mut worker_rx: Receiver<(RemoteId, CallActionRequest)>,
     states: HashMap<RemoteId, state::LuaState>,
+    sse_tx: SseBroadcaster,
 ) {
+    // Add SSE broadcaster and remote ID to each Lua state
+    for (remote_id, lua_state) in &states {
+        lua_state.add_state(sse_tx.clone());
+        lua_state.add_state(remote_id.clone());
+    }
+
     while let Some((remote_id, request)) = worker_rx.recv().await {
         tracing::info!("received action request {request:?} for remote id: {remote_id}");
         if let Some(lua_state) = states.get(&remote_id) {
