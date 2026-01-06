@@ -2,19 +2,22 @@ use std::sync::Arc;
 
 use axum::{
     Json,
-    extract::{Path, State},
+    extract::{Path, Query, State},
     http::StatusCode,
-    response::{Html, IntoResponse, Response},
+    response::{Html, IntoResponse, Response, sse::{Event, Sse}},
 };
 use axum_extra::{
     TypedHeader,
     headers::{Authorization, authorization::Bearer},
 };
+use futures::stream::Stream;
 use headers_accept::Accept;
 use mediatype::{
     MediaType,
     names::{HTML, TEXT},
 };
+use serde::Deserialize;
+use std::convert::Infallible;
 use uniremote_core::{CallActionRequest, RemoteId};
 use uniremote_render::{Buffer, RenderHtml};
 
@@ -116,4 +119,69 @@ pub async fn call_remote_action(
     Ok(Json(serde_json::json!({
         "status": "pending",
     })))
+}
+
+#[derive(Deserialize)]
+pub struct SseQuery {
+    token: Option<String>,
+}
+
+pub async fn sse_handler(
+    Path(remote_id): Path<RemoteId>,
+    State(state): State<Arc<AppState>>,
+    Query(query): Query<SseQuery>,
+    auth_header: Option<TypedHeader<Authorization<Bearer>>>,
+) -> Result<Sse<impl Stream<Item = Result<Event, Infallible>>>, StatusCode> {
+    // Check token from query param first (for EventSource), then fall back to header
+    if let Some(token) = query.token {
+        if token != state.auth_token.as_str() {
+            tracing::warn!("unauthorized SSE access attempt with invalid token from query param");
+            return Err(StatusCode::UNAUTHORIZED);
+        }
+    } else {
+        validate_token(auth_header, &state)?;
+    }
+
+    // Verify the remote exists
+    let _remote = state.remotes.get(&remote_id).ok_or(StatusCode::NOT_FOUND)?;
+
+    tracing::info!("SSE connection established for remote '{remote_id}'");
+
+    // Subscribe to the broadcast channel
+    let mut rx = state.sse_tx.subscribe();
+    
+    let stream = async_stream::stream! {
+        loop {
+            match rx.recv().await {
+                Ok((msg_remote_id, message)) => {
+                    // Only send messages for this specific remote
+                    if msg_remote_id == remote_id {
+                        let json_str = match serde_json::to_string(&message) {
+                            Ok(s) => s,
+                            Err(e) => {
+                                tracing::error!("Failed to serialize SSE message: {}", e);
+                                continue;
+                            }
+                        };
+                        
+                        yield Ok(Event::default().data(json_str));
+                    }
+                }
+                Err(tokio::sync::broadcast::error::RecvError::Lagged(n)) => {
+                    tracing::warn!("SSE client lagged behind by {} messages", n);
+                    // Continue processing, client will catch up
+                }
+                Err(tokio::sync::broadcast::error::RecvError::Closed) => {
+                    tracing::info!("SSE broadcast channel closed");
+                    break;
+                }
+            }
+        }
+    };
+
+    Ok(Sse::new(stream).keep_alive(
+        axum::response::sse::KeepAlive::new()
+            .interval(std::time::Duration::from_secs(15))
+            .text("keep-alive"),
+    ))
 }

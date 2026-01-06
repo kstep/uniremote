@@ -6,7 +6,7 @@ use axum::{
     http::{Method, header},
     routing::{get, post},
 };
-use tokio::sync::mpsc::Sender;
+use tokio::sync::{broadcast, mpsc::Sender};
 use tower_http::{
     cors::{AllowOrigin, CorsLayer},
     services::ServeDir,
@@ -24,11 +24,20 @@ pub use crate::args::BindAddress;
 use crate::{auth::AuthToken, qr::print_qr_code};
 
 const ASSETS_DIR: &str = "server/assets";
+const SSE_CHANNEL_SIZE: usize = 100;
+
+/// SSE message to be sent to connected clients
+#[derive(Clone, Debug, serde::Serialize)]
+pub struct SseMessage {
+    pub action: String,
+    pub args: serde_json::Value,
+}
 
 struct AppState {
     worker_tx: Sender<(RemoteId, CallActionRequest)>,
     remotes: HashMap<RemoteId, Remote>,
     auth_token: AuthToken,
+    sse_tx: broadcast::Sender<(RemoteId, SseMessage)>,
 }
 
 pub async fn run(
@@ -37,6 +46,7 @@ pub async fn run(
     bind_addr: BindAddress,
 ) -> anyhow::Result<()> {
     let auth_token = AuthToken::generate();
+    let (sse_tx, _) = broadcast::channel(SSE_CHANNEL_SIZE);
 
     let listener = bind_addr
         .bind()
@@ -52,6 +62,7 @@ pub async fn run(
         worker_tx,
         remotes,
         auth_token,
+        sse_tx,
     });
 
     let cors = CorsLayer::new()
@@ -63,6 +74,7 @@ pub async fn run(
         .route("/", get(handlers::list_remotes))
         .route("/r/{id}", get(handlers::get_remote))
         .route("/api/r/{id}/call", post(handlers::call_remote_action))
+        .route("/api/r/{id}/events", get(handlers::sse_handler))
         .nest_service("/assets", ServeDir::new(ASSETS_DIR))
         .layer(TraceLayer::new_for_http())
         .layer(cors)

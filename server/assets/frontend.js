@@ -291,13 +291,118 @@ function initializeRemote() {
     });
 }
 
+// SSE Connection for server updates
+let eventSource = null;
+
+function connectSSE() {
+    const remoteId = getRemoteId();
+    if (!remoteId || !authToken) {
+        return;
+    }
+
+    // Close existing connection if any
+    if (eventSource) {
+        eventSource.close();
+    }
+
+    const sseUrl = `/api/r/${remoteId}/events?token=${authToken}`;
+    eventSource = new EventSource(sseUrl);
+
+    eventSource.onopen = () => {
+        console.log('SSE connection established');
+    };
+
+    eventSource.onmessage = (event) => {
+        try {
+            const message = JSON.parse(event.data);
+            console.log('Received SSE message:', message);
+            handleSSEMessage(message);
+        } catch (error) {
+            console.error('Failed to parse SSE message:', error, event.data);
+        }
+    };
+
+    eventSource.onerror = (error) => {
+        console.error('SSE connection error:', error);
+        eventSource.close();
+        
+        // Reconnect after a delay
+        setTimeout(() => {
+            console.log('Attempting to reconnect SSE...');
+            connectSSE();
+        }, 5000);
+    };
+}
+
+// Handle SSE messages from server
+function handleSSEMessage(message) {
+    const { action, args } = message;
+
+    if (action === 'update' && args && args.id) {
+        const element = document.querySelector(`[data-widget-id="${args.id}"]`);
+        if (!element) {
+            console.warn(`Widget with id "${args.id}" not found`);
+            return;
+        }
+
+        // Update element properties based on args
+        if (args.text !== undefined) {
+            // For text content elements (labels, buttons, etc.)
+            const textElement = element.querySelector('.widget-text') || element;
+            textElement.textContent = args.text;
+        }
+
+        if (args.value !== undefined) {
+            // For input elements (text fields, sliders, etc.)
+            if (element.tagName === 'INPUT' || element.tagName === 'TEXTAREA') {
+                element.value = args.value;
+            } else if (element.tagName === 'PROGRESS') {
+                element.value = args.value;
+            }
+        }
+
+        if (args.checked !== undefined) {
+            // For checkboxes and toggles
+            if (element.tagName === 'INPUT' && element.type === 'checkbox') {
+                element.checked = args.checked;
+            }
+        }
+
+        if (args.visibility !== undefined) {
+            // Handle visibility changes
+            switch (args.visibility) {
+                case 'visible':
+                    element.style.visibility = 'visible';
+                    element.style.display = '';
+                    break;
+                case 'invisible':
+                    element.style.visibility = 'hidden';
+                    break;
+                case 'gone':
+                    element.style.display = 'none';
+                    break;
+            }
+        }
+
+        if (args.progress !== undefined) {
+            // For sliders/progress bars
+            const progressElement = element.querySelector('input[type="range"]') || element;
+            if (progressElement.tagName === 'INPUT' && progressElement.type === 'range') {
+                progressElement.value = args.progress;
+            }
+        }
+    }
+}
+
 // Initialize when DOM is ready
 if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', () => {
         extractAuthToken();
         initializeRemote();
+        connectSSE();
     });
 } else {
     extractAuthToken();
     initializeRemote();
+    connectSSE();
 }
