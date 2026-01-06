@@ -327,18 +327,19 @@ textarea.text {
     background: var(--theme-light-focus-color, rgba(0, 0, 0, 0.1));
 }
 
-/* Hide radio buttons visually but position over headers */
+/* Hide radio buttons visually but keep accessible and clickable */
 .tab input[type="radio"] {
     position: absolute;
     opacity: 0;
     width: 100%;
     margin: 0;
+    padding: 0;
     cursor: pointer;
-    z-index: 1;
-    /* Match the header's height */
-    height: calc(0.75rem * 2 + 1em + 2px);
+    /* Cover the tab header area */
+    height: 100%;
     top: 0;
     left: 0;
+    z-index: 1;
 }
 
 /* Active tab header styling */
