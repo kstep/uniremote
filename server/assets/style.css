@@ -290,8 +290,8 @@ textarea.text {
 
 /* Tabs */
 .tabs {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(0, 1fr));
+    display: flex;
+    flex-wrap: wrap;
     border: 1px solid;
     border-radius: 8px;
     overflow: hidden;
@@ -300,7 +300,10 @@ textarea.text {
 
 /* Individual tab container */
 .tab {
-    display: contents;
+    flex: 1 1 0;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
 }
 
 /* Hide radio buttons visually but keep them functional */
@@ -318,7 +321,7 @@ textarea.text {
     color: var(--theme-light-normal-color, var(--light-color, inherit));
     cursor: pointer;
     user-select: none;
-    grid-row: 1;
+    order: -1;
 }
 
 .tab:last-of-type .tab-header {
@@ -335,12 +338,12 @@ textarea.text {
     border-bottom: 2px solid var(--theme-light-active-color, var(--light-color, currentColor));
 }
 
-/* Tab panels - hidden by default, span all columns */
+/* Tab panels - hidden by default */
 .tab .tab-panel {
     display: none;
     padding: 1rem;
-    grid-column: 1 / -1;
-    grid-row: 2;
+    width: 100%;
+    flex-basis: 100%;
 }
 
 /* Show only the active tab panel */
