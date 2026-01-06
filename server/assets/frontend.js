@@ -375,7 +375,7 @@ function handleSSEMessage(message) {
     const { action, args } = message;
 
     if (action === 'update' && args && args.id) {
-        const element = document.querySelector(`[data-widget-id="${args.id}"]`);
+        const element = document.getElementById(args.id);
         if (!element) {
             console.warn(`Widget with id "${args.id}" not found`);
             return;
@@ -422,9 +422,11 @@ function handleSSEMessage(message) {
 
         if (args.progress !== undefined) {
             // For sliders/progress bars
-            const progressElement = element.querySelector('input[type="range"]') || element;
-            if (progressElement.tagName === 'INPUT' && progressElement.type === 'range') {
+            const progressElement = element.querySelector('input[type="range"]');
+            if (progressElement) {
                 progressElement.value = args.progress;
+            } else if (element.tagName === 'INPUT' && element.type === 'range') {
+                element.value = args.progress;
             }
         }
     }
