@@ -105,6 +105,18 @@ impl fmt::Display for ActionId {
     }
 }
 
+impl From<String> for ActionId {
+    fn from(s: String) -> Self {
+        Self(s.into())
+    }
+}
+
+impl From<&str> for ActionId {
+    fn from(s: &str) -> Self {
+        Self(s.into())
+    }
+}
+
 impl Deref for ActionId {
     type Target = str;
 

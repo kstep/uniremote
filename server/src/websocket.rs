@@ -10,7 +10,7 @@ use axum::{
 use axum_extra::TypedHeader;
 use futures_util::{sink::SinkExt, stream::StreamExt};
 use headers::{Header, HeaderName, HeaderValue};
-use uniremote_core::{ActionId, CallActionRequest, RemoteId};
+use uniremote_core::{ClientMessage, RemoteId};
 
 use crate::{AppState, auth::AuthToken};
 
@@ -50,29 +50,6 @@ impl SecWebSocketProtocol {
             protocol.strip_prefix("bearer.")
         })
     }
-}
-
-#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
-#[serde(tag = "type")]
-pub enum ServerMessage {
-    #[serde(rename = "update")]
-    Update {
-        action: ActionId,
-        args: serde_json::Value,
-    },
-    #[serde(rename = "error")]
-    Error { message: String },
-}
-
-#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
-#[serde(tag = "type")]
-pub enum ClientMessage {
-    #[serde(rename = "call")]
-    CallAction {
-        action: ActionId,
-        #[serde(default)]
-        args: Option<Vec<serde_json::Value>>,
-    },
 }
 
 pub async fn websocket_handler(
@@ -141,9 +118,7 @@ async fn handle_websocket(socket: WebSocket, remote_id: RemoteId, state: Arc<App
                     };
 
                     match client_msg {
-                        ClientMessage::CallAction { action, args } => {
-                            let request = CallActionRequest { action, args };
-
+                        ClientMessage::CallAction(request) => {
                             tracing::info!(
                                 "websocket call action '{}' on remote '{remote_id}'",
                                 request.action

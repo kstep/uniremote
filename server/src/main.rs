@@ -1,5 +1,6 @@
 use clap::Parser;
 use tokio::sync::broadcast;
+use uniremote_core::ServerMessage;
 use uniremote_server::args::Args;
 
 const WORKER_CHANNEL_SIZE: usize = 100;
@@ -17,7 +18,7 @@ async fn main() -> anyhow::Result<()> {
     tracing::info!("loaded {} remotes", remotes.len());
 
     // Create broadcast channel for server-to-client messages
-    let (broadcast_tx, _) = broadcast::channel(BROADCAST_CHANNEL_SIZE);
+    let (broadcast_tx, _) = broadcast::channel::<ServerMessage>(BROADCAST_CHANNEL_SIZE);
 
     // Add broadcast sender to each Lua state
     for lua_state in lua_states.values() {

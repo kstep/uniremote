@@ -12,7 +12,7 @@ use tower_http::{
     services::ServeDir,
     trace::TraceLayer,
 };
-use uniremote_core::{CallActionRequest, Remote, RemoteId};
+use uniremote_core::{CallActionRequest, Remote, RemoteId, ServerMessage};
 
 mod auth;
 mod handlers;
@@ -30,16 +30,14 @@ struct AppState {
     worker_tx: Sender<(RemoteId, CallActionRequest)>,
     remotes: HashMap<RemoteId, Remote>,
     auth_token: AuthToken,
-    // Uses serde_json::Value instead of websocket::ServerMessage to support
-    // flexible message formats from Lua (e.g., {"action":"update", "args":{...}})
-    broadcast_tx: broadcast::Sender<serde_json::Value>,
+    broadcast_tx: broadcast::Sender<ServerMessage>,
 }
 
 pub async fn run(
     worker_tx: Sender<(RemoteId, CallActionRequest)>,
     remotes: HashMap<RemoteId, Remote>,
     bind_addr: BindAddress,
-    broadcast_tx: broadcast::Sender<serde_json::Value>,
+    broadcast_tx: broadcast::Sender<ServerMessage>,
 ) -> anyhow::Result<()> {
     let auth_token = AuthToken::generate();
 
