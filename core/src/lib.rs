@@ -8,7 +8,7 @@ use std::path::PathBuf;
 pub use id::{ActionId, RemoteId};
 pub use layout::Layout;
 pub use message::{ClientMessage, ServerMessage};
-pub use meta::RemoteMeta;
+pub use meta::{PLATFORM, Platform, RemoteMeta};
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone)]
