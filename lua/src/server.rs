@@ -2,8 +2,9 @@ use mlua::{Lua, LuaSerdeExt, Table, Variadic};
 use serde_json::Value as JsonValue;
 use tokio::sync::broadcast;
 
-// This type will be defined in server/src/websocket.rs
-// We need to reference it through a re-export or use a compatible JSON structure
+// Note: We send raw JSON instead of using the ServerMessage enum from websocket.rs
+// because the required message format {"action":"update", "args":{...}} differs from
+// the ServerMessage::Update structure which serializes to {"type":"update", "action":"...", "args":{...}}
 fn get_broadcast_sender(lua: &Lua) -> broadcast::Sender<JsonValue> {
     lua.app_data_ref::<broadcast::Sender<JsonValue>>()
         .expect("broadcast sender not found in lua state")

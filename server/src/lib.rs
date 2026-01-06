@@ -30,6 +30,8 @@ struct AppState {
     worker_tx: Sender<(RemoteId, CallActionRequest)>,
     remotes: HashMap<RemoteId, Remote>,
     auth_token: AuthToken,
+    // Uses serde_json::Value instead of websocket::ServerMessage to support
+    // flexible message formats from Lua (e.g., {"action":"update", "args":{...}})
     broadcast_tx: broadcast::Sender<serde_json::Value>,
 }
 
