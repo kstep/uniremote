@@ -290,8 +290,8 @@ textarea.text {
 
 /* Tabs */
 .tabs {
-    display: flex;
-    flex-wrap: wrap;
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(0, 1fr));
     border: 1px solid;
     border-radius: 8px;
     overflow: hidden;
@@ -300,14 +300,16 @@ textarea.text {
 
 /* Individual tab container */
 .tab {
-    position: relative;
-    flex: 1 1 auto;
-    min-width: 0;
+    display: contents;
 }
 
-/* Tab headers - displayed in a row */
+/* Hide radio buttons visually but keep them functional */
+.tab input[type="radio"] {
+    display: none;
+}
+
+/* Tab headers - all visible in a row at the top, equal width */
 .tab .tab-header {
-    display: block;
     padding: 0.75rem 1rem;
     background: var(--dark-color, rgba(0, 0, 0, 0.05));
     border-right: 1px solid;
@@ -316,7 +318,7 @@ textarea.text {
     color: var(--theme-light-normal-color, var(--light-color, inherit));
     cursor: pointer;
     user-select: none;
-    position: relative;
+    grid-row: 1;
 }
 
 .tab:last-of-type .tab-header {
@@ -327,34 +329,18 @@ textarea.text {
     background: var(--theme-light-focus-color, rgba(0, 0, 0, 0.1));
 }
 
-/* Hide radio buttons visually but keep accessible and clickable */
-.tab input[type="radio"] {
-    position: absolute;
-    opacity: 0;
-    width: 100%;
-    margin: 0;
-    padding: 0;
-    cursor: pointer;
-    /* Cover the tab header area */
-    height: 100%;
-    top: 0;
-    left: 0;
-    z-index: 1;
-}
-
 /* Active tab header styling */
 .tab input[type="radio"]:checked + .tab-header {
     background: var(--theme-light-active-color, rgba(0, 0, 0, 0.15));
     border-bottom: 2px solid var(--theme-light-active-color, var(--light-color, currentColor));
 }
 
-/* Tab panels - hidden by default, take full width */
+/* Tab panels - hidden by default, span all columns */
 .tab .tab-panel {
     display: none;
     padding: 1rem;
-    width: 100%;
-    flex-basis: 100%;
-    order: 999;
+    grid-column: 1 / -1;
+    grid-row: 2;
 }
 
 /* Show only the active tab panel */
