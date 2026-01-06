@@ -6,4 +6,8 @@ license = "MIT"
 
 [dependencies]
 uniremote-core = { path = "../core" }
+
+axum.workspace = true
 tracing.workspace = true
+
+html-escape = "0.2"

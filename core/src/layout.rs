@@ -33,6 +33,8 @@ pub struct Layout {
 #[derive(Debug, Clone, Deserialize)]
 #[serde(rename = "grid")]
 pub struct Grid {
+    #[serde(default, rename = "@id")]
+    pub id: Option<LayoutId>,
     #[serde(default, rename = "$value")]
     pub children: Vec<Widget>,
 }
@@ -40,6 +42,8 @@ pub struct Grid {
 #[derive(Debug, Clone, Deserialize)]
 #[serde(rename = "row")]
 pub struct Row {
+    #[serde(default, rename = "@id")]
+    pub id: Option<LayoutId>,
     #[serde(default, rename = "$value")]
     pub children: Vec<Widget>,
 }

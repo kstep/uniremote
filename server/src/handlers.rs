@@ -16,24 +16,11 @@ use mediatype::{
     names::{HTML, TEXT},
 };
 use uniremote_core::{CallActionRequest, RemoteId};
+use uniremote_render::{Buffer, RenderHtml};
 
 use crate::{AppState, auth::validate_token};
 
 const CONTENT_TYPE_HTML: MediaType = MediaType::from_parts(TEXT, HTML, None, &[]);
-
-static HTML_HEADER: &str = r#"<!DOCTYPE html>
-<html>
-<head>
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>UniRemote</title>
-    <script src="/assets/frontend.js"></script>
-    <link rel="stylesheet" href="/assets/style.css">
-</head>
-<body>
-"#;
-
-static HTML_FOOTER: &str = r#"</body></html>"#;
 
 pub async fn list_remotes(
     State(state): State<Arc<AppState>>,
@@ -53,23 +40,24 @@ pub async fn list_remotes(
 }
 
 fn list_remotes_html(state: &AppState) -> Response {
-    let mut html = String::from(HTML_HEADER);
+    let mut html = Buffer::with_header();
     html.push_str(r#"<h1>Available Remotes</h1><ul>"#);
 
     let mut remotes: Vec<_> = state.remotes.iter().collect();
     remotes.sort_by(|a, b| a.1.meta.name.cmp(&b.1.meta.name));
 
     for (id, remote) in remotes {
-        html.push_str(&format!(
-            r#"<li><a href="/r/{id}">{}</a></li>"#,
-            remote.meta.name
-        ));
+        html.push_str(r#"<li><a href="/r/"#);
+        html.push_html(&id);
+        html.push_str(r#"">"#);
+        html.push_html(&remote.meta.name);
+        html.push_str(r#"</a></li>"#);
     }
 
     html.push_str("</ul>");
-    html.push_str(HTML_FOOTER);
+    html.add_footer();
 
-    Html(html).into_response()
+    html.into_response()
 }
 
 fn list_remotes_json(state: &AppState) -> Response {
@@ -95,16 +83,16 @@ pub async fn get_remote(
 ) -> Result<Html<String>, StatusCode> {
     let remote = state.remotes.get(&remote_id).ok_or(StatusCode::NOT_FOUND)?;
 
-    let mut output = String::from(HTML_HEADER);
+    let mut output = Buffer::with_header();
 
-    output.push_str("<div class=\"backlink\"><a href=\"/\">&larr; Back to remotes</a></div>");
-    output.push_str("<h1>");
-    output.push_str(&remote.meta.name);
+    output.push_str("<div class=\"backlink\"><a href=\"/\">&larr; Back to remotes</a></div><h1>");
+    output.push_html(&remote.meta.name);
     output.push_str("</h1>");
 
-    uniremote_render::render_layout(&mut output, &remote.layout);
-    output.push_str(HTML_FOOTER);
-    Ok(Html(output))
+    remote.layout.render(&mut output);
+    output.add_footer();
+
+    Ok(output.into_html())
 }
 
 pub async fn call_remote_action(

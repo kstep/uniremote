@@ -8,6 +8,7 @@ license = "MIT"
 uniremote-core = { path = "../core" }
 uniremote-lua = { path = "../lua" }
 uniremote-input = { path = "../input" }
+
 anyhow.workspace = true
 serde.workspace = true
 tracing.workspace = true
