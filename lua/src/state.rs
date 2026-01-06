@@ -35,9 +35,9 @@ impl LuaState {
         Ok(actions)
     }
 
-    fn action(&self, name: ActionId) -> anyhow::Result<Function> {
+    fn action(&self, name: &ActionId) -> anyhow::Result<Function> {
         let actions = self.actions()?;
-        let function: Function = actions.get(&*name)?;
+        let function: Function = actions.get(&**name)?;
         Ok(function)
     }
 
@@ -47,12 +47,23 @@ impl LuaState {
         Ok(settings)
     }
 
+    pub fn trigger_event(&self, event_name: &str) -> anyhow::Result<()> {
+        let globals = self.lua.globals();
+        let events: Table = globals.get("events")?;
+        if let Ok(event_fn) = events.get::<Function>(event_name) {
+            event_fn.call::<()>(())?;
+        }
+        Ok(())
+    }
+
     pub fn call_action(
         &self,
         action_id: ActionId,
         args: Option<Vec<serde_json::Value>>,
     ) -> anyhow::Result<()> {
-        let action_fn = self.action(action_id)?;
+        let action_fn = self.action(&action_id)?;
+        let preaction = self.lua.globals().get::<Function>("preaction").ok();
+        let postaction = self.lua.globals().get::<Function>("postaction").ok();
 
         if let Some(args_map) = args {
             let args = MultiValue::from(
@@ -61,9 +72,34 @@ impl LuaState {
                     .map(|v| self.lua.to_value(v))
                     .collect::<Result<Vec<_>, _>>()?,
             );
-            action_fn.call::<()>(args)?;
+
+            let run = if let Some(preaction) = preaction {
+                preaction.call::<bool>((&*action_id, args.clone()))?
+            } else {
+                true
+            };
+
+            if run {
+                action_fn.call::<()>(args.clone())?;
+            }
+
+            if let Some(postaction) = postaction {
+                postaction.call::<()>((&*action_id, args))?;
+            }
         } else {
-            action_fn.call::<()>(())?;
+            let run = if let Some(preaction) = preaction {
+                preaction.call::<bool>(&*action_id)?
+            } else {
+                true
+            };
+
+            if run {
+                action_fn.call::<()>(())?;
+            }
+
+            if let Some(postaction) = postaction {
+                postaction.call::<()>(&*action_id)?;
+            }
         }
 
         Ok(())

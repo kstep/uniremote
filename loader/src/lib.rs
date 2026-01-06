@@ -106,6 +106,10 @@ fn load_remote(
         }
     }
 
+    if let Err(error) = lua.trigger_event("create") {
+        tracing::warn!("failed to trigger create event for remote {remote_id}: {error:#}");
+    }
+
     Ok(Some((
         remote_id,
         Remote {
