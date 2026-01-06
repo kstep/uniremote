@@ -290,48 +290,68 @@ textarea.text {
 
 /* Tabs */
 .tabs {
-    display: flex;
-    flex-direction: column;
-    gap: 0;
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(0, 1fr));
     border: 1px solid;
     border-radius: 8px;
     overflow: hidden;
     background: var(--theme-light-default-color, var(--default-color, transparent));
 }
 
-.tab-headers {
-    display: flex;
-    border-bottom: 1px solid;
-    background: var(--dark-color, rgba(0, 0, 0, 0.05));
+/* Individual tab container */
+.tab {
+    display: contents;
 }
 
-.tab-header {
-    flex: 1;
-    padding: 0.75rem 1rem;
-    background: transparent;
-    border: none;
-    border-right: 1px solid;
+/* Position radio buttons to overlay their labels */
+.tab input[type="radio"] {
+    grid-row: 1;
+    opacity: 0;
+    width: 100%;
+    height: 100%;
+    margin: 0;
     cursor: pointer;
-    min-height: auto;
-    color: var(--theme-light-normal-color, var(--light-color, inherit));
+    z-index: 2;
 }
 
-.tab-header:last-child {
+/* Tab headers - all in first row */
+.tab .tab-header {
+    padding: 0.75rem 1rem;
+    background: var(--dark-color, rgba(0, 0, 0, 0.05));
+    border-right: 1px solid;
+    border-bottom: 1px solid;
+    text-align: center;
+    color: var(--theme-light-normal-color, var(--light-color, inherit));
+    grid-row: 1;
+    position: relative;
+}
+
+.tab:last-of-type .tab-header {
     border-right: none;
 }
 
-.tab-header:hover {
-    background: var(--theme-light-focus-color, rgba(0, 0, 0, 0.05));
+.tab .tab-header:hover {
+    background: var(--theme-light-focus-color, rgba(0, 0, 0, 0.1));
 }
 
-.tab-header.active {
-    border-bottom: 2px solid;
-    border-bottom-color: var(--theme-light-active-color, var(--light-color, currentColor));
-    background: var(--theme-light-active-color, rgba(0, 0, 0, 0.1));
+/* Active tab header styling */
+.tab input[type="radio"]:checked + .tab-header {
+    background: var(--theme-light-active-color, rgba(0, 0, 0, 0.15));
+    border-bottom: 2px solid var(--theme-light-active-color, var(--light-color, currentColor));
+    font-weight: 600;
 }
 
-.tab-content {
+/* Tab panels - all in row 2, spanning all columns */
+.tab .tab-panel {
+    display: none;
     padding: 1rem;
+    grid-column: 1 / -1;
+    grid-row: 2;
+}
+
+/* Show only the active tab panel */
+.tab input[type="radio"]:checked ~ .tab-panel {
+    display: block;
 }
 
 /* Notification */
