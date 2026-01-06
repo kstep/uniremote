@@ -439,17 +439,18 @@ function initializeRemote() {
     });
 }
 
-// Initialize when DOM is ready
-if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', () => {
-        extractAuthToken();
-        initializeRemote();
-        connectWebSocket();
-    });
-} else {
+// Initialize application
+function initialize() {
     extractAuthToken();
     initializeRemote();
     connectWebSocket();
+}
+
+// Initialize when DOM is ready
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initialize);
+} else {
+    initialize();
 }
 
 // Clean up WebSocket on page unload
