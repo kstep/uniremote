@@ -16,20 +16,17 @@ fn update(lua: &Lua, updates: Variadic<Table>) -> mlua::Result<()> {
         let id: String = table
             .get("id")
             .map_err(|_| mlua::Error::runtime("update table must have an 'id' field"))?;
-        
+
         let action = ActionId::from(id);
 
         // Convert the entire Lua table to JSON directly using serde
         let args: serde_json::Value = lua.from_value(mlua::Value::Table(table.clone()))?;
 
         // Create the ServerMessage::Update
-        let message = ServerMessage::Update {
-            action,
-            args,
-        };
-        
+        let message = ServerMessage::Update { action, args };
+
         tracing::info!("sending server update: {message:?}");
-        
+
         // Send to broadcast channel (ignore if no receivers)
         let _ = broadcast_tx.send(message);
     }
@@ -48,8 +45,9 @@ pub fn load(lua: &Lua, libs: &Table) -> anyhow::Result<()> {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use tokio::sync::broadcast;
+
+    use super::*;
 
     #[test]
     fn test_server_update_basic() {
@@ -62,14 +60,16 @@ mod tests {
 
         // Load the server module
         load(&lua, &libs).unwrap();
-        
+
         // Set libs as a global so it can be accessed from Lua scripts
         lua.globals().set("libs", libs).unwrap();
 
         // Test the update function from Lua
-        lua.load(r#"
+        lua.load(
+            r#"
             libs.server.update({ id = "info", text = "foobar" })
-        "#)
+        "#,
+        )
         .exec()
         .unwrap();
 
@@ -97,12 +97,14 @@ mod tests {
         lua.globals().set("libs", libs).unwrap();
 
         // Test with multiple updates
-        lua.load(r#"
+        lua.load(
+            r#"
             libs.server.update(
                 { id = "info", text = "hello" },
                 { id = "tgl", checked = true }
             )
-        "#)
+        "#,
+        )
         .exec()
         .unwrap();
 
@@ -141,7 +143,8 @@ mod tests {
         lua.globals().set("libs", libs).unwrap();
 
         // Test with various data types
-        lua.load(r#"
+        lua.load(
+            r#"
             libs.server.update({
                 id = "test",
                 text = "string",
@@ -149,7 +152,8 @@ mod tests {
                 bool = true,
                 float = 3.14
             })
-        "#)
+        "#,
+        )
         .exec()
         .unwrap();
 

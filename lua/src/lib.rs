@@ -13,7 +13,7 @@ pub mod state;
 
 pub async fn run(
     mut worker_rx: Receiver<(RemoteId, CallActionRequest)>,
-    states: HashMap<RemoteId, state::LuaState>,
+    states: HashMap<RemoteId, LuaState>,
 ) {
     while let Some((remote_id, request)) = worker_rx.recv().await {
         tracing::info!("received action request {request:?} for remote id: {remote_id}");

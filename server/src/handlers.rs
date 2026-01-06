@@ -46,7 +46,11 @@ fn list_remotes_html(state: &AppState) -> Response {
     let mut html = Buffer::with_header();
     html.push_str(r#"<h1>Available Remotes</h1><ul class="remote-list">"#);
 
-    let mut remotes: Vec<_> = state.remotes.iter().map(|(id, rwc)| (id, &rwc.remote)).collect();
+    let mut remotes: Vec<_> = state
+        .remotes
+        .iter()
+        .map(|(id, rwc)| (id, &rwc.remote))
+        .collect();
     remotes.sort_by(|a, b| a.1.meta.name.cmp(&b.1.meta.name));
 
     for (id, remote) in remotes {
@@ -66,7 +70,11 @@ fn list_remotes_html(state: &AppState) -> Response {
 }
 
 fn list_remotes_json(state: &AppState) -> Response {
-    let mut remotes: Vec<_> = state.remotes.iter().map(|(id, rwc)| (id, &rwc.remote)).collect();
+    let mut remotes: Vec<_> = state
+        .remotes
+        .iter()
+        .map(|(id, rwc)| (id, &rwc.remote))
+        .collect();
     remotes.sort_by(|a, b| a.1.meta.name.cmp(&b.1.meta.name));
 
     let remotes: Vec<_> = remotes
