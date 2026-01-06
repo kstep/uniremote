@@ -139,7 +139,12 @@ pub async fn get_remote_icon(
     let remote_with_channel = state.remotes.get(&remote_id).ok_or(StatusCode::NOT_FOUND)?;
     let remote = &remote_with_channel.remote;
 
-    let icon_path = remote.path.join(&remote.meta.icon);
+    let icon_filename = remote
+        .meta
+        .icon
+        .as_deref()
+        .unwrap_or_else(|| std::path::Path::new("icon.png"));
+    let icon_path = remote.path.join(icon_filename);
 
     // Check if remote icon exists, fallback to default
     let (file_path, mime_type) = match tokio::fs::metadata(&icon_path).await {

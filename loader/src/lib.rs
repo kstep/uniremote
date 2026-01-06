@@ -23,32 +23,34 @@ fn platform_name() -> &'static str {
 
 /// Resolve a file path with platform-specific fallback logic.
 ///
-/// Priority:
-/// 1. If default_path exists, use it
-/// 2. Try platform-specific file (e.g., layout_linux.xml)
-/// 3. Try base fallback file (e.g., layout.xml)
-/// 4. Return None if nothing exists
+/// If explicit_path is Some, only check that specific path.
+/// If explicit_path is None, use platform-dependent lookup:
+/// 1. Try platform-specific file (e.g., layout_linux.xml)
+/// 2. Try base fallback file (e.g., layout.xml)
+/// 3. Return None if nothing exists
 fn resolve_platform_file(
     base_dir: &Path,
-    default_path: &Path,
+    explicit_path: Option<&PathBuf>,
     fallback_base: &str,
     fallback_ext: &str,
 ) -> Option<PathBuf> {
-    // First priority: check if the default path (from meta.layout/meta.remote)
-    // exists
-    let default_full_path = base_dir.join(default_path);
-    if default_full_path.is_file() {
-        return Some(default_full_path);
+    // If an explicit path is provided, only check that path
+    if let Some(path) = explicit_path {
+        let full_path = base_dir.join(path);
+        if full_path.is_file() {
+            return Some(full_path);
+        }
+        return None;
     }
 
-    // Second priority: try platform-specific file
+    // Otherwise, try platform-specific file first
     let platform_specific = format!("{}_{}.{}", fallback_base, platform_name(), fallback_ext);
     let platform_path = base_dir.join(&platform_specific);
     if platform_path.is_file() {
         return Some(platform_path);
     }
 
-    // Third priority: try base fallback
+    // Then try base fallback
     let fallback_file = format!("{}.{}", fallback_base, fallback_ext);
     let fallback_path = base_dir.join(&fallback_file);
     if fallback_path.is_file() {
@@ -119,7 +121,9 @@ fn load_remote(
     }
 
     let layout: Layout = {
-        if let Some(layout_path) = resolve_platform_file(path, &meta.layout, "layout", "xml") {
+        if let Some(layout_path) =
+            resolve_platform_file(path, meta.layout.as_ref(), "layout", "xml")
+        {
             quick_xml::de::from_reader(BufReader::new(
                 File::open(layout_path).context("failed to open layout file")?,
             ))
@@ -130,7 +134,9 @@ fn load_remote(
     };
 
     let lua = {
-        if let Some(script_path) = resolve_platform_file(path, &meta.remote, "remote", "lua") {
+        if let Some(script_path) =
+            resolve_platform_file(path, meta.remote.as_ref(), "remote", "lua")
+        {
             LuaState::new(&script_path)?
         } else {
             LuaState::empty()
