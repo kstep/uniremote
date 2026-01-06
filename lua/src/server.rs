@@ -1,6 +1,6 @@
 use mlua::{Lua, LuaSerdeExt, Table, Variadic};
 use tokio::sync::broadcast;
-use uniremote_core::{ActionId, ServerMessage};
+use uniremote_core::{ActionId, RemoteId, ServerMessage};
 
 fn get_broadcast_sender(lua: &Lua) -> broadcast::Sender<ServerMessage> {
     lua.app_data_ref::<broadcast::Sender<ServerMessage>>()
@@ -8,8 +8,15 @@ fn get_broadcast_sender(lua: &Lua) -> broadcast::Sender<ServerMessage> {
         .clone()
 }
 
+fn get_remote_id(lua: &Lua) -> RemoteId {
+    lua.app_data_ref::<RemoteId>()
+        .expect("remote_id not found in lua state")
+        .clone()
+}
+
 fn update(lua: &Lua, updates: Variadic<Table>) -> mlua::Result<()> {
     let broadcast_tx = get_broadcast_sender(lua);
+    let remote_id = get_remote_id(lua);
 
     for table in updates.iter() {
         // Extract the "id" field to use as the action
@@ -24,6 +31,7 @@ fn update(lua: &Lua, updates: Variadic<Table>) -> mlua::Result<()> {
 
         // Create the ServerMessage::Update
         let message = ServerMessage::Update {
+            remote_id: remote_id.clone(),
             action,
             args,
         };
@@ -59,6 +67,10 @@ mod tests {
         // Create a broadcast channel and add it to lua state
         let (tx, mut rx) = broadcast::channel(10);
         lua.set_app_data(tx);
+        
+        // Add a test remote_id to lua state
+        let remote_id = RemoteId::from("test.remote");
+        lua.set_app_data(remote_id.clone());
 
         // Load the server module
         load(&lua, &libs).unwrap();
@@ -76,7 +88,8 @@ mod tests {
         // Verify the message was sent
         let msg: ServerMessage = rx.try_recv().unwrap();
         match msg {
-            ServerMessage::Update { action, args } => {
+            ServerMessage::Update { remote_id: msg_remote_id, action, args } => {
+                assert_eq!(msg_remote_id, remote_id);
                 assert_eq!(&*action, "info");
                 assert_eq!(args["id"], "info");
                 assert_eq!(args["text"], "foobar");
@@ -92,6 +105,10 @@ mod tests {
 
         let (tx, mut rx) = broadcast::channel(10);
         lua.set_app_data(tx);
+        
+        // Add a test remote_id to lua state
+        let remote_id = RemoteId::from("test.remote");
+        lua.set_app_data(remote_id.clone());
 
         load(&lua, &libs).unwrap();
         lua.globals().set("libs", libs).unwrap();
@@ -109,7 +126,8 @@ mod tests {
         // Verify first message
         let msg1: ServerMessage = rx.try_recv().unwrap();
         match msg1 {
-            ServerMessage::Update { action, args } => {
+            ServerMessage::Update { remote_id: msg_remote_id, action, args } => {
+                assert_eq!(msg_remote_id, remote_id);
                 assert_eq!(&*action, "info");
                 assert_eq!(args["id"], "info");
                 assert_eq!(args["text"], "hello");
@@ -120,7 +138,8 @@ mod tests {
         // Verify second message
         let msg2: ServerMessage = rx.try_recv().unwrap();
         match msg2 {
-            ServerMessage::Update { action, args } => {
+            ServerMessage::Update { remote_id: msg_remote_id, action, args } => {
+                assert_eq!(msg_remote_id, remote_id);
                 assert_eq!(&*action, "tgl");
                 assert_eq!(args["id"], "tgl");
                 assert_eq!(args["checked"], true);
@@ -136,6 +155,10 @@ mod tests {
 
         let (tx, mut rx) = broadcast::channel(10);
         lua.set_app_data(tx);
+        
+        // Add a test remote_id to lua state
+        let remote_id = RemoteId::from("test.remote");
+        lua.set_app_data(remote_id.clone());
 
         load(&lua, &libs).unwrap();
         lua.globals().set("libs", libs).unwrap();
@@ -155,7 +178,8 @@ mod tests {
 
         let msg: ServerMessage = rx.try_recv().unwrap();
         match msg {
-            ServerMessage::Update { action, args } => {
+            ServerMessage::Update { remote_id: msg_remote_id, action, args } => {
+                assert_eq!(msg_remote_id, remote_id);
                 assert_eq!(&*action, "test");
                 assert_eq!(args["id"], "test");
                 assert_eq!(args["text"], "string");

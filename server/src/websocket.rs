@@ -12,7 +12,7 @@ use futures_util::{sink::SinkExt, stream::StreamExt};
 use headers::{Header, HeaderName, HeaderValue};
 use uniremote_core::{ClientMessage, RemoteId};
 
-use crate::{AppState, auth::AuthToken};
+use crate::AppState;
 
 /// Typed header for Sec-WebSocket-Protocol
 #[derive(Debug, Clone)]
@@ -65,7 +65,7 @@ pub async fn websocket_handler(
         .ok_or(axum::http::StatusCode::UNAUTHORIZED)?;
 
     // Validate token
-    if !AuthToken::validate(token, &state.auth_token) {
+    if !state.auth_token.validate(token) {
         return Err(axum::http::StatusCode::UNAUTHORIZED);
     }
 
@@ -87,8 +87,14 @@ async fn handle_websocket(socket: WebSocket, remote_id: RemoteId, state: Arc<App
     let mut broadcast_rx = state.broadcast_tx.subscribe();
 
     // Spawn a task to forward broadcast messages to this WebSocket
+    let remote_id_clone = remote_id.clone();
     let mut send_task = tokio::spawn(async move {
         while let Ok(msg) = broadcast_rx.recv().await {
+            // Only forward messages for this remote
+            if msg.remote_id() != &remote_id_clone {
+                continue;
+            }
+
             let json = match serde_json::to_string(&msg) {
                 Ok(json) => json,
                 Err(e) => {

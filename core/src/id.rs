@@ -49,6 +49,18 @@ impl TryFrom<&Path> for RemoteId {
     }
 }
 
+impl From<&str> for RemoteId {
+    fn from(s: &str) -> Self {
+        Self(s.into())
+    }
+}
+
+impl From<String> for RemoteId {
+    fn from(s: String) -> Self {
+        Self(s.into())
+    }
+}
+
 impl Deref for RemoteId {
     type Target = str;
 

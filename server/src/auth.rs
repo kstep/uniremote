@@ -29,8 +29,8 @@ impl AuthToken {
     }
 
     /// Validate a token string against this token
-    pub fn validate(token: &str, expected: &AuthToken) -> bool {
-        token == expected.as_str()
+    pub fn validate(&self, token: &str) -> bool {
+        token == self.as_str()
     }
 }
 
