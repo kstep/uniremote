@@ -49,6 +49,18 @@ impl TryFrom<&Path> for RemoteId {
     }
 }
 
+impl From<&str> for RemoteId {
+    fn from(s: &str) -> Self {
+        Self(s.into())
+    }
+}
+
+impl From<String> for RemoteId {
+    fn from(s: String) -> Self {
+        Self(s.into())
+    }
+}
+
 impl Deref for RemoteId {
     type Target = str;
 
@@ -102,6 +114,18 @@ pub struct ActionId(CompactString);
 impl fmt::Display for ActionId {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "{}", self.0)
+    }
+}
+
+impl From<String> for ActionId {
+    fn from(s: String) -> Self {
+        Self(s.into())
+    }
+}
+
+impl From<&str> for ActionId {
+    fn from(s: &str) -> Self {
+        Self(s.into())
     }
 }
 

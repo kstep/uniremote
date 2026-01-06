@@ -83,6 +83,7 @@ fn load_modules(lua: &Lua) -> anyhow::Result<()> {
     crate::keyboard::load(lua, &libs)?;
     crate::mouse::load(lua, &libs)?;
     crate::script::load(lua, &libs)?;
+    crate::server::load(lua, &libs)?;
     lua.globals().set("libs", libs)?;
     Ok(())
 }

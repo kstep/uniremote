@@ -46,7 +46,7 @@ fn list_remotes_html(state: &AppState) -> Response {
     let mut html = Buffer::with_header();
     html.push_str(r#"<h1>Available Remotes</h1><ul class="remote-list">"#);
 
-    let mut remotes: Vec<_> = state.remotes.iter().collect();
+    let mut remotes: Vec<_> = state.remotes.iter().map(|(id, rwc)| (id, &rwc.remote)).collect();
     remotes.sort_by(|a, b| a.1.meta.name.cmp(&b.1.meta.name));
 
     for (id, remote) in remotes {
@@ -66,7 +66,7 @@ fn list_remotes_html(state: &AppState) -> Response {
 }
 
 fn list_remotes_json(state: &AppState) -> Response {
-    let mut remotes: Vec<_> = state.remotes.iter().collect();
+    let mut remotes: Vec<_> = state.remotes.iter().map(|(id, rwc)| (id, &rwc.remote)).collect();
     remotes.sort_by(|a, b| a.1.meta.name.cmp(&b.1.meta.name));
 
     let remotes: Vec<_> = remotes
@@ -86,7 +86,8 @@ pub async fn get_remote(
     Path(remote_id): Path<RemoteId>,
     State(state): State<Arc<AppState>>,
 ) -> Result<Html<String>, StatusCode> {
-    let remote = state.remotes.get(&remote_id).ok_or(StatusCode::NOT_FOUND)?;
+    let remote_with_channel = state.remotes.get(&remote_id).ok_or(StatusCode::NOT_FOUND)?;
+    let remote = &remote_with_channel.remote;
 
     let mut output = Buffer::with_header();
 
@@ -108,7 +109,7 @@ pub async fn call_remote_action(
 ) -> Result<Json<serde_json::Value>, StatusCode> {
     validate_token(auth_header, &state)?;
 
-    let _remote = state.remotes.get(&remote_id).ok_or(StatusCode::NOT_FOUND)?;
+    let _remote_with_channel = state.remotes.get(&remote_id).ok_or(StatusCode::NOT_FOUND)?;
 
     tracing::info!("call action '{}' on remote '{remote_id}'", payload.action);
 
@@ -127,7 +128,8 @@ pub async fn get_remote_icon(
     Path(remote_id): Path<RemoteId>,
     State(state): State<Arc<AppState>>,
 ) -> Result<Response, StatusCode> {
-    let remote = state.remotes.get(&remote_id).ok_or(StatusCode::NOT_FOUND)?;
+    let remote_with_channel = state.remotes.get(&remote_id).ok_or(StatusCode::NOT_FOUND)?;
+    let remote = &remote_with_channel.remote;
 
     let icon_path = remote.path.join(&remote.meta.icon);
 

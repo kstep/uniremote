@@ -1,11 +1,13 @@
 pub mod id;
 pub mod layout;
+pub mod message;
 pub mod meta;
 
 use std::path::PathBuf;
 
 pub use id::{ActionId, RemoteId};
 pub use layout::Layout;
+pub use message::{ClientMessage, ServerMessage};
 pub use meta::RemoteMeta;
 use serde::{Deserialize, Serialize};
 

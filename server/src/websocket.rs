@@ -10,9 +10,9 @@ use axum::{
 use axum_extra::TypedHeader;
 use futures_util::{sink::SinkExt, stream::StreamExt};
 use headers::{Header, HeaderName, HeaderValue};
-use uniremote_core::{ActionId, CallActionRequest, RemoteId};
+use uniremote_core::{ClientMessage, RemoteId};
 
-use crate::{AppState, auth::AuthToken};
+use crate::AppState;
 
 /// Typed header for Sec-WebSocket-Protocol
 #[derive(Debug, Clone)]
@@ -52,29 +52,6 @@ impl SecWebSocketProtocol {
     }
 }
 
-#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
-#[serde(tag = "type")]
-pub enum ServerMessage {
-    #[serde(rename = "update")]
-    Update {
-        action: ActionId,
-        args: serde_json::Value,
-    },
-    #[serde(rename = "error")]
-    Error { message: String },
-}
-
-#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
-#[serde(tag = "type")]
-pub enum ClientMessage {
-    #[serde(rename = "call")]
-    CallAction {
-        action: ActionId,
-        #[serde(default)]
-        args: Option<Vec<serde_json::Value>>,
-    },
-}
-
 pub async fn websocket_handler(
     Path(remote_id): Path<RemoteId>,
     State(state): State<Arc<AppState>>,
@@ -88,7 +65,7 @@ pub async fn websocket_handler(
         .ok_or(axum::http::StatusCode::UNAUTHORIZED)?;
 
     // Validate token
-    if !AuthToken::validate(token, &state.auth_token) {
+    if !state.auth_token.validate(token) {
         return Err(axum::http::StatusCode::UNAUTHORIZED);
     }
 
@@ -106,8 +83,15 @@ pub async fn websocket_handler(
 async fn handle_websocket(socket: WebSocket, remote_id: RemoteId, state: Arc<AppState>) {
     let (mut sender, mut receiver) = socket.split();
 
-    // Subscribe to broadcast channel for server-to-client messages
-    let mut broadcast_rx = state.broadcast_tx.subscribe();
+    // Get the broadcast channel for this specific remote from RemoteWithChannel
+    let broadcast_tx = match state.remotes.get(&remote_id) {
+        Some(remote_with_channel) => &remote_with_channel.broadcast_tx,
+        None => {
+            tracing::error!("no remote found for: {remote_id}");
+            return;
+        }
+    };
+    let mut broadcast_rx = broadcast_tx.subscribe();
 
     // Spawn a task to forward broadcast messages to this WebSocket
     let mut send_task = tokio::spawn(async move {
@@ -141,9 +125,7 @@ async fn handle_websocket(socket: WebSocket, remote_id: RemoteId, state: Arc<App
                     };
 
                     match client_msg {
-                        ClientMessage::CallAction { action, args } => {
-                            let request = CallActionRequest { action, args };
-
+                        ClientMessage::CallAction(request) => {
                             tracing::info!(
                                 "websocket call action '{}' on remote '{remote_id}'",
                                 request.action
