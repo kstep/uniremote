@@ -303,16 +303,15 @@ textarea.text {
     display: contents;
 }
 
-/* Hide radio buttons but keep them functional */
+/* Hide radio buttons but keep them functional and accessible */
 .tab-input {
     position: absolute;
-    opacity: 0;
-    pointer-events: none;
+    left: -9999px;
 }
 
 /* Tab header - always visible, same size */
 .tab-header {
-    flex: 1 1 0;
+    flex: 1 1 0px;
     padding: 0.75rem 1rem;
     background: var(--dark-color, rgba(0, 0, 0, 0.05));
     border-right: 1px solid;

@@ -322,20 +322,25 @@ fn render_external_image(output: &mut Buffer, src: &str) {
 }
 
 fn render_tab(output: &mut Buffer, tab: &Tab, is_active: bool, group_id: &Option<LayoutId>) {
+    // Helper closure to generate unique tab ID
+    let generate_tab_id = |output: &mut Buffer| {
+        if let Some(tab_id) = &tab.id {
+            output.push_html(tab_id);
+        } else if let Some(group_id) = group_id {
+            output.push_html(group_id);
+            if let Some(text) = &tab.text {
+                output.push_char('-');
+                output.push_html(text);
+            }
+        }
+    };
+
     output.push_str("<div class=\"tab\" ");
     render_id(output, &tab.id);
     output.push_str("><input type=\"radio\" id=\"tab-");
 
     // Generate unique id for the radio button
-    if let Some(tab_id) = &tab.id {
-        output.push_html(tab_id);
-    } else if let Some(group_id) = group_id {
-        output.push_html(group_id);
-        output.push_char('-');
-        if let Some(text) = &tab.text {
-            output.push_html(text);
-        }
-    }
+    generate_tab_id(output);
 
     output.push_str("\" name=\"tab-group");
 
@@ -356,13 +361,7 @@ fn render_tab(output: &mut Buffer, tab: &Tab, is_active: bool, group_id: &Option
         output.push_str("<label class=\"tab-header\" for=\"tab-");
         
         // Use same id generation logic
-        if let Some(tab_id) = &tab.id {
-            output.push_html(tab_id);
-        } else if let Some(group_id) = group_id {
-            output.push_html(group_id);
-            output.push_char('-');
-            output.push_html(text);
-        }
+        generate_tab_id(output);
         
         output.push_str("\">");
         output.push_html(text);
