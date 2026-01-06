@@ -342,7 +342,6 @@ textarea.text {
 .tab .tab-panel {
     display: none;
     padding: 1rem;
-    width: 100%;
     flex-basis: 100%;
 }
 
