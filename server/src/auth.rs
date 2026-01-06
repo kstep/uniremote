@@ -27,6 +27,11 @@ impl AuthToken {
     pub fn as_str(&self) -> &str {
         &self.0
     }
+
+    /// Validate a token string against this token
+    pub fn validate(token: &str, expected: &AuthToken) -> bool {
+        token == expected.as_str()
+    }
 }
 
 /// Validate the authentication token from Authorization Bearer header

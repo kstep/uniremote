@@ -66,9 +66,9 @@ impl Buffer {
     }
 }
 
-impl Into<String> for Buffer {
-    fn into(self) -> String {
-        self.content
+impl From<Buffer> for String {
+    fn from(val: Buffer) -> Self {
+        val.content
     }
 }
 
