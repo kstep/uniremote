@@ -383,52 +383,72 @@ function handleSSEMessage(message) {
 
         // Update element properties based on args
         if (args.text !== undefined) {
-            // For text content elements (labels, buttons, etc.)
-            const textElement = element.querySelector('.widget-text') || element;
-            textElement.textContent = args.text;
+            updateElementText(element, args.text);
         }
 
         if (args.value !== undefined) {
-            // For input elements (text fields, sliders, etc.)
-            if (element.tagName === 'INPUT' || element.tagName === 'TEXTAREA') {
-                element.value = args.value;
-            } else if (element.tagName === 'PROGRESS') {
-                element.value = args.value;
-            }
+            updateElementValue(element, args.value);
         }
 
         if (args.checked !== undefined) {
-            // For checkboxes and toggles
-            if (element.tagName === 'INPUT' && element.type === 'checkbox') {
-                element.checked = args.checked;
-            }
+            updateElementChecked(element, args.checked);
         }
 
         if (args.visibility !== undefined) {
-            // Handle visibility changes
-            switch (args.visibility) {
-                case 'visible':
-                    element.style.visibility = 'visible';
-                    element.style.display = '';
-                    break;
-                case 'invisible':
-                    element.style.visibility = 'hidden';
-                    break;
-                case 'gone':
-                    element.style.display = 'none';
-                    break;
-            }
+            updateElementVisibility(element, args.visibility);
         }
 
         if (args.progress !== undefined) {
-            // For sliders/progress bars
-            const progressElement = element.querySelector('input[type="range"]');
-            if (progressElement) {
-                progressElement.value = args.progress;
-            } else if (element.tagName === 'INPUT' && element.type === 'range') {
-                element.value = args.progress;
-            }
+            updateElementProgress(element, args.progress);
         }
+    }
+}
+
+// Helper function to update text content
+function updateElementText(element, text) {
+    const textElement = element.querySelector('.widget-text') || element;
+    textElement.textContent = text;
+}
+
+// Helper function to update element value
+function updateElementValue(element, value) {
+    if (element.tagName === 'INPUT' || element.tagName === 'TEXTAREA') {
+        element.value = value;
+    } else if (element.tagName === 'PROGRESS') {
+        element.value = value;
+    }
+}
+
+// Helper function to update checked state
+function updateElementChecked(element, checked) {
+    if (element.tagName === 'INPUT' && element.type === 'checkbox') {
+        element.checked = checked;
+    }
+}
+
+// Helper function to update visibility
+function updateElementVisibility(element, visibility) {
+    switch (visibility) {
+        case 'visible':
+            element.style.visibility = 'visible';
+            element.style.display = '';
+            break;
+        case 'invisible':
+            element.style.visibility = 'hidden';
+            break;
+        case 'gone':
+            element.style.display = 'none';
+            break;
+    }
+}
+
+// Helper function to update progress/slider value
+function updateElementProgress(element, progress) {
+    const progressElement = element.querySelector('input[type="range"]');
+    if (progressElement) {
+        progressElement.value = progress;
+    } else if (element.tagName === 'INPUT' && element.type === 'range') {
+        element.value = progress;
     }
 }
 
