@@ -17,7 +17,9 @@ fn platform_name() -> &'static str {
         Platform::Linux => "linux",
         Platform::Windows => "win",
         Platform::Mac => "osx",
-        Platform::Legacy => "linux", // fallback to linux for legacy
+        // Legacy is treated as Linux for backward compatibility, as it was the
+        // original/default platform before platform-specific support was added
+        Platform::Legacy => "linux",
     }
 }
 
@@ -37,27 +39,29 @@ fn resolve_platform_file(
     // If an explicit path is provided, only check that path
     if let Some(path) = explicit_path {
         let full_path = base_dir.join(path);
-        if full_path.is_file() {
-            return Some(full_path);
-        }
-        return None;
+        return if full_path.is_file() {
+            Some(full_path)
+        } else {
+            None
+        };
     }
 
     // Otherwise, try platform-specific file first
-    let platform_specific = format!("{}_{}.{}", fallback_base, platform_name(), fallback_ext);
+    let platform = platform_name();
+    let platform_specific = format!("{fallback_base}_{platform}.{fallback_ext}");
     let platform_path = base_dir.join(&platform_specific);
     if platform_path.is_file() {
         return Some(platform_path);
     }
 
     // Then try base fallback
-    let fallback_file = format!("{}.{}", fallback_base, fallback_ext);
+    let fallback_file = format!("{fallback_base}.{fallback_ext}");
     let fallback_path = base_dir.join(&fallback_file);
     if fallback_path.is_file() {
-        return Some(fallback_path);
+        Some(fallback_path)
+    } else {
+        None
     }
-
-    None
 }
 
 pub fn load_remotes(
@@ -143,12 +147,16 @@ fn load_remote(
         }
     };
 
-    let settings_path = path.join("settings.prop");
+    let settings_filename = meta
+        .settings
+        .as_deref()
+        .unwrap_or_else(|| std::path::Path::new("settings.prop"));
+    let settings_path = path.join(settings_filename);
     if settings_path.is_file() {
         let settings: HashMap<String, String> = serde_java_properties::from_reader(BufReader::new(
-            File::open(settings_path).context("failed to open settings.prop")?,
+            File::open(settings_path).context("failed to open settings file")?,
         ))
-        .context("failed to parse settings.prop")?;
+        .context("failed to parse settings file")?;
 
         if let Ok(lua_settings) = lua.settings() {
             for (key, value) in settings {
