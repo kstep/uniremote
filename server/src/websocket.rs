@@ -41,7 +41,8 @@ impl Header for SecWebSocketProtocol {
 }
 
 impl SecWebSocketProtocol {
-    /// Extract the bearer token from the protocol string (format: "bearer.{token}")
+    /// Extract the bearer token from the protocol string (format:
+    /// "bearer.{token}")
     pub fn bearer_token(&self) -> Option<&str> {
         // Split by comma in case multiple protocols are specified
         self.0.split(',').find_map(|protocol| {
