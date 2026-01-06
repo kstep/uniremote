@@ -5,16 +5,13 @@ use axum::{
         Path, State, WebSocketUpgrade,
         ws::{Message, WebSocket},
     },
+    http::HeaderMap,
     response::Response,
-};
-use axum_extra::{
-    TypedHeader,
-    headers::{Authorization, authorization::Bearer},
 };
 use futures_util::{sink::SinkExt, stream::StreamExt};
 use uniremote_core::{ActionId, CallActionRequest, RemoteId};
 
-use crate::{AppState, auth::validate_token};
+use crate::{AppState, auth::AuthToken};
 
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 #[serde(tag = "type")]
@@ -42,17 +39,36 @@ pub enum ClientMessage {
 pub async fn websocket_handler(
     Path(remote_id): Path<RemoteId>,
     State(state): State<Arc<AppState>>,
-    auth_header: Option<TypedHeader<Authorization<Bearer>>>,
+    headers: HeaderMap,
     ws: WebSocketUpgrade,
 ) -> Result<Response, axum::http::StatusCode> {
-    validate_token(auth_header, &state)?;
+    // Extract token from Sec-WebSocket-Protocol header (format: "bearer.{token}")
+    let token = headers
+        .get("sec-websocket-protocol")
+        .and_then(|h| h.to_str().ok())
+        .and_then(|protocols| {
+            // Split by comma in case multiple protocols are specified
+            protocols.split(',').find_map(|protocol| {
+                let protocol = protocol.trim();
+                protocol.strip_prefix("bearer.")
+            })
+        })
+        .ok_or(axum::http::StatusCode::UNAUTHORIZED)?;
+
+    // Validate token
+    if !AuthToken::validate(token, &state.auth_token) {
+        return Err(axum::http::StatusCode::UNAUTHORIZED);
+    }
 
     let _remote = state
         .remotes
         .get(&remote_id)
         .ok_or(axum::http::StatusCode::NOT_FOUND)?;
 
-    Ok(ws.on_upgrade(move |socket| handle_websocket(socket, remote_id, state)))
+    // Accept the WebSocket with the same protocol to complete the handshake
+    Ok(ws
+        .protocols([format!("bearer.{}", token)])
+        .on_upgrade(move |socket| handle_websocket(socket, remote_id, state)))
 }
 
 async fn handle_websocket(socket: WebSocket, remote_id: RemoteId, state: Arc<AppState>) {

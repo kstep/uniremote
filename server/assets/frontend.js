@@ -43,12 +43,13 @@ function connectWebSocket() {
 
     // Construct WebSocket URL
     const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-    const wsUrl = `${protocol}//${window.location.host}/api/r/${remoteId}/ws?token=${encodeURIComponent(authToken)}`;
+    const wsUrl = `${protocol}//${window.location.host}/api/r/${remoteId}/ws`;
 
     console.log('Connecting to WebSocket:', wsUrl);
 
     try {
-        ws = new WebSocket(wsUrl);
+        // Pass auth token via WebSocket subprotocol (bearer.{token})
+        ws = new WebSocket(wsUrl, [`bearer.${authToken}`]);
 
         ws.onopen = () => {
             console.log('WebSocket connected');
@@ -162,7 +163,7 @@ function callRemoteAction(action, args = []) {
         const message = {
             type: 'call',
             action: action,
-            args: args.length > 0 ? args : null
+            args: (args && args.length > 0) ? args : null
         };
         
         try {
