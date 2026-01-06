@@ -36,7 +36,6 @@ pub fn load_remotes(
                 remotes.insert(id.clone(), remote);
 
                 lua.add_state(backend.clone());
-                lua.add_state(id.clone());
                 lua_states.insert(id, lua);
 
                 (remotes, lua_states)

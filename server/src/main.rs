@@ -1,4 +1,5 @@
 use clap::Parser;
+use std::collections::HashMap;
 use tokio::sync::broadcast;
 use uniremote_core::ServerMessage;
 use uniremote_server::args::Args;
@@ -17,18 +18,18 @@ async fn main() -> anyhow::Result<()> {
 
     tracing::info!("loaded {} remotes", remotes.len());
 
-    // Create broadcast channel for server-to-client messages
-    let (broadcast_tx, _) = broadcast::channel::<ServerMessage>(BROADCAST_CHANNEL_SIZE);
-
-    // Add broadcast sender to each Lua state
-    for lua_state in lua_states.values() {
+    // Create separate broadcast channel for each remote
+    let mut broadcast_channels = HashMap::new();
+    for (remote_id, lua_state) in &lua_states {
+        let (broadcast_tx, _) = broadcast::channel::<ServerMessage>(BROADCAST_CHANNEL_SIZE);
         lua_state.add_state(broadcast_tx.clone());
+        broadcast_channels.insert(remote_id.clone(), broadcast_tx);
     }
 
     let (tx, rx) = tokio::sync::mpsc::channel(WORKER_CHANNEL_SIZE);
     let worker = tokio::spawn(uniremote_lua::run(rx, lua_states));
 
-    uniremote_server::run(tx, remotes, args.bind, broadcast_tx).await?;
+    uniremote_server::run(tx, remotes, args.bind, broadcast_channels).await?;
     worker.await?;
 
     Ok(())

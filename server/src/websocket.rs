@@ -83,18 +83,19 @@ pub async fn websocket_handler(
 async fn handle_websocket(socket: WebSocket, remote_id: RemoteId, state: Arc<AppState>) {
     let (mut sender, mut receiver) = socket.split();
 
-    // Subscribe to broadcast channel for server-to-client messages
-    let mut broadcast_rx = state.broadcast_tx.subscribe();
+    // Get the broadcast channel for this specific remote
+    let broadcast_tx = match state.broadcast_channels.get(&remote_id) {
+        Some(tx) => tx,
+        None => {
+            tracing::error!("no broadcast channel found for remote: {remote_id}");
+            return;
+        }
+    };
+    let mut broadcast_rx = broadcast_tx.subscribe();
 
     // Spawn a task to forward broadcast messages to this WebSocket
-    let remote_id_clone = remote_id.clone();
     let mut send_task = tokio::spawn(async move {
         while let Ok(msg) = broadcast_rx.recv().await {
-            // Only forward messages for this remote
-            if msg.remote_id() != &remote_id_clone {
-                continue;
-            }
-
             let json = match serde_json::to_string(&msg) {
                 Ok(json) => json,
                 Err(e) => {

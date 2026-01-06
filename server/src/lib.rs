@@ -26,18 +26,18 @@ use crate::{auth::AuthToken, qr::print_qr_code};
 
 const ASSETS_DIR: &str = "server/assets";
 
-struct AppState {
+pub struct AppState {
     worker_tx: Sender<(RemoteId, CallActionRequest)>,
     remotes: HashMap<RemoteId, Remote>,
     auth_token: AuthToken,
-    broadcast_tx: broadcast::Sender<ServerMessage>,
+    broadcast_channels: HashMap<RemoteId, broadcast::Sender<ServerMessage>>,
 }
 
 pub async fn run(
     worker_tx: Sender<(RemoteId, CallActionRequest)>,
     remotes: HashMap<RemoteId, Remote>,
     bind_addr: BindAddress,
-    broadcast_tx: broadcast::Sender<ServerMessage>,
+    broadcast_channels: HashMap<RemoteId, broadcast::Sender<ServerMessage>>,
 ) -> anyhow::Result<()> {
     let auth_token = AuthToken::generate();
 
@@ -55,7 +55,7 @@ pub async fn run(
         worker_tx,
         remotes,
         auth_token,
-        broadcast_tx,
+        broadcast_channels,
     });
 
     let cors = CorsLayer::new()
