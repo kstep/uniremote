@@ -290,8 +290,8 @@ textarea.text {
 
 /* Tabs */
 .tabs {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(0, 1fr));
+    display: flex;
+    flex-wrap: wrap;
     border: 1px solid;
     border-radius: 8px;
     overflow: hidden;
@@ -300,29 +300,22 @@ textarea.text {
 
 /* Individual tab container */
 .tab {
-    display: contents;
+    position: relative;
+    flex: 1 1 auto;
+    min-width: 0;
 }
 
-/* Position radio buttons to overlay their labels */
-.tab input[type="radio"] {
-    grid-row: 1;
-    opacity: 0;
-    width: 100%;
-    height: 100%;
-    margin: 0;
-    cursor: pointer;
-    z-index: 2;
-}
-
-/* Tab headers - all in first row */
+/* Tab headers - displayed in a row */
 .tab .tab-header {
+    display: block;
     padding: 0.75rem 1rem;
     background: var(--dark-color, rgba(0, 0, 0, 0.05));
     border-right: 1px solid;
     border-bottom: 1px solid;
     text-align: center;
     color: var(--theme-light-normal-color, var(--light-color, inherit));
-    grid-row: 1;
+    cursor: pointer;
+    user-select: none;
     position: relative;
 }
 
@@ -334,6 +327,20 @@ textarea.text {
     background: var(--theme-light-focus-color, rgba(0, 0, 0, 0.1));
 }
 
+/* Hide radio buttons visually but position over headers */
+.tab input[type="radio"] {
+    position: absolute;
+    opacity: 0;
+    width: 100%;
+    margin: 0;
+    cursor: pointer;
+    z-index: 1;
+    /* Match the header's height */
+    height: calc(0.75rem * 2 + 1em + 2px);
+    top: 0;
+    left: 0;
+}
+
 /* Active tab header styling */
 .tab input[type="radio"]:checked + .tab-header {
     background: var(--theme-light-active-color, rgba(0, 0, 0, 0.15));
@@ -341,12 +348,13 @@ textarea.text {
     font-weight: 600;
 }
 
-/* Tab panels - all in row 2, spanning all columns */
+/* Tab panels - hidden by default, take full width */
 .tab .tab-panel {
     display: none;
     padding: 1rem;
-    grid-column: 1 / -1;
-    grid-row: 2;
+    width: 100%;
+    flex-basis: 100%;
+    order: 999;
 }
 
 /* Show only the active tab panel */
