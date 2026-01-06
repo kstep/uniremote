@@ -1,4 +1,4 @@
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
 use serde::{Deserialize, Serialize};
 
@@ -58,6 +58,20 @@ impl RemoteMeta {
         self.platform.is_empty()
             || self.platform.contains(&PLATFORM)
             || self.platform.contains(&Platform::Legacy)
+    }
+
+    /// Get the settings file path, using the default if not specified
+    pub fn settings_file(&self) -> &Path {
+        self.settings
+            .as_deref()
+            .unwrap_or_else(|| Path::new("settings.prop"))
+    }
+
+    /// Get the icon file path, using the default if not specified
+    pub fn icon_file(&self) -> &Path {
+        self.icon
+            .as_deref()
+            .unwrap_or_else(|| Path::new("icon.png"))
     }
 }
 

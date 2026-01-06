@@ -147,11 +147,7 @@ fn load_remote(
         }
     };
 
-    let settings_filename = meta
-        .settings
-        .as_deref()
-        .unwrap_or_else(|| std::path::Path::new("settings.prop"));
-    let settings_path = path.join(settings_filename);
+    let settings_path = path.join(meta.settings_file());
     if settings_path.is_file() {
         let settings: HashMap<String, String> = serde_java_properties::from_reader(BufReader::new(
             File::open(settings_path).context("failed to open settings file")?,
