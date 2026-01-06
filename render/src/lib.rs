@@ -297,13 +297,32 @@ impl RenderHtml for Tabs {
     fn render(&self, output: &mut Buffer) {
         output.push_str("<div class=\"tabs\" ");
         render_id(output, &self.id);
-        render_style!(output, self);
+        output.push_str("style=\"--tab-count:");
+        output.push_html(&self.tabs.len().to_string());
+        output.push_char(';');
+        render_style_inline(
+            output,
+            &self.color,
+            &self.lightcolor,
+            &self.darkcolor,
+            &self.dark,
+            &self.light,
+        );
+        output.push_str("\" ");
         render_handlers!(output, self, onchange);
         output.push_char('>');
 
+        let group_id = if let Some(id) = &self.id {
+            format!("tab-group-{}", id)
+        } else {
+            format!("tab-group-{}", self as *const _ as usize)
+        };
+
+        // Render each tab as: input -> header -> panel
         for (i, tab) in self.tabs.iter().enumerate() {
-            render_tab(output, tab, i == self.index, &self.id);
+            render_tab(output, tab, i == self.index, &group_id, i);
         }
+
         output.push_str("</div>");
     }
 }
@@ -321,16 +340,14 @@ fn render_external_image(output: &mut Buffer, src: &str) {
     output.push_str("\" alt=\"\" />");
 }
 
-fn render_tab(output: &mut Buffer, tab: &Tab, is_active: bool, group_id: &Option<LayoutId>) {
-    output.push_str("<div class=\"tab\" ");
-    render_id(output, &tab.id);
-    output.push_str("><input type=\"radio\" name=\"tab-group");
+fn render_tab(output: &mut Buffer, tab: &Tab, is_active: bool, group_id: &str, index: usize) {
+    let input_id = format!("{}-tab-{}", group_id, index);
 
-    if let Some(group_id) = group_id {
-        output.push_char('-');
-        output.push_html(group_id);
-    }
-
+    // Radio input
+    output.push_str("<input type=\"radio\" name=\"");
+    output.push_html(group_id);
+    output.push_str("\" id=\"");
+    output.push_html(&input_id);
     output.push_str("\" class=\"tab-input\" ");
 
     if is_active {
@@ -339,24 +356,26 @@ fn render_tab(output: &mut Buffer, tab: &Tab, is_active: bool, group_id: &Option
 
     output.push_str("/>");
 
+    // Header label
     if let Some(text) = &tab.text {
-        output.push_str("<label class=\"tab-header\">");
+        output.push_str("<label for=\"");
+        output.push_html(&input_id);
+        output.push_str("\" class=\"tab-header\">");
         output.push_html(text);
         output.push_str("</label>");
     }
 
-    output.push_str("<div class=\"tab-panel\">");
+    // Panel content
+    output.push_str("<div class=\"tab-panel\" ");
+    render_id(output, &tab.id);
+    output.push_str(">");
     for widget in &tab.children {
         widget.render(output);
     }
-    output.push_str("</div></div>");
+    output.push_str("</div>");
 }
 
-fn render_space(output: &mut Buffer) {
-    output.push_str("<div class=\"space\"></div>");
-}
-
-fn render_style(
+fn render_style_inline(
     output: &mut Buffer,
     color: &Option<String>,
     lightcolor: &Option<String>,
@@ -364,7 +383,6 @@ fn render_style(
     dark: &Option<Theme>,
     light: &Option<Theme>,
 ) {
-    output.push_str("style=\"");
     if let Some(color) = color {
         output.push_str("--default-color:");
         output.push_html(color);
@@ -390,7 +408,22 @@ fn render_style(
     if let Some(light) = light {
         render_theme(output, "light", light);
     }
+}
 
+fn render_space(output: &mut Buffer) {
+    output.push_str("<div class=\"space\"></div>");
+}
+
+fn render_style(
+    output: &mut Buffer,
+    color: &Option<String>,
+    lightcolor: &Option<String>,
+    darkcolor: &Option<String>,
+    dark: &Option<Theme>,
+    light: &Option<Theme>,
+) {
+    output.push_str("style=\"");
+    render_style_inline(output, color, lightcolor, darkcolor, dark, light);
     output.push_str("\" ");
 }
 
