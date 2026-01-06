@@ -452,15 +452,16 @@ function updateElementProgress(element, progress) {
     }
 }
 
-// Initialize when DOM is ready
-if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', () => {
-        extractAuthToken();
-        initializeRemote();
-        connectSSE();
-    });
-} else {
+// Initialize the application
+function initializeApp() {
     extractAuthToken();
     initializeRemote();
     connectSSE();
+}
+
+// Initialize when DOM is ready
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initializeApp);
+} else {
+    initializeApp();
 }
