@@ -33,10 +33,10 @@ The project uses a modular architecture with multiple specialized crates:
     │  render    │       │   loader    │      │    lua     │
     │  (HTML)    │       │  (Config)   │      │  (Script)  │
     └─────┬──────┘       └──────┬──────┘      └──────┬─────┘
-          │                     │                     │ │
-          │                     │                     │ │
-          │                     │                     │ │
-          │                     ▼                     ▼ ▼
+          │                     │                    │
+          │                     │                    │
+          │                     │                    │
+          │                     ▼                    ▼
           │              ┌──────────────┐   ┌────────────┐
           └─────────────▶│ uniremote-   │   │ uniremote- │
                          │    core      │   │   input    │
