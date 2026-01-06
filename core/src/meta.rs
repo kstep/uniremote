@@ -1,4 +1,4 @@
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
 use serde::{Deserialize, Serialize};
 
@@ -27,14 +27,14 @@ pub struct RemoteMeta {
     #[serde(default = "default_version", rename = "meta.version")]
     pub version: String,
 
-    #[serde(default = "default_remote_file", rename = "meta.remote")]
-    pub remote: PathBuf,
-    #[serde(default = "default_layout_file", rename = "meta.layout")]
-    pub layout: PathBuf,
-    #[serde(default = "default_icon_file", rename = "meta.icon")]
-    pub icon: PathBuf,
-    #[serde(default = "default_settings_file", rename = "meta.settings")]
-    pub settings: PathBuf,
+    #[serde(default, rename = "meta.remote")]
+    pub remote: Option<PathBuf>,
+    #[serde(default, rename = "meta.layout")]
+    pub layout: Option<PathBuf>,
+    #[serde(default, rename = "meta.icon")]
+    pub icon: Option<PathBuf>,
+    #[serde(default, rename = "meta.settings")]
+    pub settings: Option<PathBuf>,
 
     #[serde(
         default,
@@ -58,6 +58,20 @@ impl RemoteMeta {
         self.platform.is_empty()
             || self.platform.contains(&PLATFORM)
             || self.platform.contains(&Platform::Legacy)
+    }
+
+    /// Get the settings file path, using the default if not specified
+    pub fn settings_file(&self) -> &Path {
+        self.settings
+            .as_deref()
+            .unwrap_or_else(|| Path::new("settings.prop"))
+    }
+
+    /// Get the icon file path, using the default if not specified
+    pub fn icon_file(&self) -> &Path {
+        self.icon
+            .as_deref()
+            .unwrap_or_else(|| Path::new("icon.png"))
     }
 }
 
@@ -88,22 +102,6 @@ fn default_version() -> String {
 
 fn default_enabled() -> bool {
     true
-}
-
-pub fn default_remote_file() -> PathBuf {
-    PathBuf::from("remote.lua")
-}
-
-pub fn default_icon_file() -> PathBuf {
-    PathBuf::from("icon.png")
-}
-
-pub fn default_layout_file() -> PathBuf {
-    PathBuf::from("layout.xml")
-}
-
-pub fn default_settings_file() -> PathBuf {
-    PathBuf::from("settings.prop")
 }
 
 #[derive(Default, Serialize, Deserialize, Debug, Clone, Copy)]

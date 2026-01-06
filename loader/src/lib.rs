@@ -7,9 +7,62 @@ use std::{
 };
 
 use anyhow::Context;
-use uniremote_core::{Layout, Remote, RemoteId, RemoteMeta};
+use uniremote_core::{Layout, PLATFORM, Platform, Remote, RemoteId, RemoteMeta};
 use uniremote_input::UInputBackend;
 use uniremote_lua::LuaState;
+
+/// Get the platform name as a lowercase string for file naming
+fn platform_name() -> &'static str {
+    match PLATFORM {
+        Platform::Linux => "linux",
+        Platform::Windows => "win",
+        Platform::Mac => "osx",
+        // Legacy is treated as Linux for backward compatibility, as it was the
+        // original/default platform before platform-specific support was added
+        Platform::Legacy => "linux",
+    }
+}
+
+/// Resolve a file path with platform-specific fallback logic.
+///
+/// If explicit_path is Some, only check that specific path.
+/// If explicit_path is None, use platform-dependent lookup:
+/// 1. Try platform-specific file (e.g., layout_linux.xml)
+/// 2. Try base fallback file (e.g., layout.xml)
+/// 3. Return None if nothing exists
+fn resolve_platform_file(
+    base_dir: &Path,
+    explicit_path: Option<&PathBuf>,
+    fallback_base: &str,
+    fallback_ext: &str,
+) -> Option<PathBuf> {
+    // If an explicit path is provided, only check that path
+    if let Some(path) = explicit_path {
+        let full_path = base_dir.join(path);
+        return if full_path.is_file() {
+            Some(full_path)
+        } else {
+            None
+        };
+    }
+
+    // Otherwise, try platform-specific file first
+    let platform = platform_name();
+    let platform_specific = format!("{fallback_base}_{platform}.{fallback_ext}");
+    let platform_path = base_dir.join(&platform_specific);
+    if platform_path.is_file() {
+        return Some(platform_path);
+    }
+
+    // Then try base fallback
+    let fallback_file = format!("{fallback_base}.{fallback_ext}");
+    let fallback_path = base_dir.join(&fallback_file);
+    if fallback_path.is_file() {
+        Some(fallback_path)
+    } else {
+        None
+    }
+}
 
 pub fn load_remotes(
     remotes_dir: PathBuf,
@@ -72,8 +125,9 @@ fn load_remote(
     }
 
     let layout: Layout = {
-        let layout_path = path.join(&meta.layout);
-        if layout_path.is_file() {
+        if let Some(layout_path) =
+            resolve_platform_file(path, meta.layout.as_ref(), "layout", "xml")
+        {
             quick_xml::de::from_reader(BufReader::new(
                 File::open(layout_path).context("failed to open layout file")?,
             ))
@@ -84,20 +138,21 @@ fn load_remote(
     };
 
     let lua = {
-        let script_path = path.join("remote.lua");
-        if script_path.is_file() {
+        if let Some(script_path) =
+            resolve_platform_file(path, meta.remote.as_ref(), "remote", "lua")
+        {
             LuaState::new(&script_path)?
         } else {
             LuaState::empty()
         }
     };
 
-    let settings_path = path.join("settings.prop");
+    let settings_path = path.join(meta.settings_file());
     if settings_path.is_file() {
         let settings: HashMap<String, String> = serde_java_properties::from_reader(BufReader::new(
-            File::open(settings_path).context("failed to open settings.prop")?,
+            File::open(settings_path).context("failed to open settings file")?,
         ))
-        .context("failed to parse settings.prop")?;
+        .context("failed to parse settings file")?;
 
         if let Ok(lua_settings) = lua.settings() {
             for (key, value) in settings {
