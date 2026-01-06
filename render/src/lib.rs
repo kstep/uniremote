@@ -142,7 +142,7 @@ impl RenderHtml for Image {
         render_id(output, &self.id);
         if let Some(src) = &self.image {
             output.push_str("src=\"");
-            output.push_html(src);
+            output.push_url(src);
             output.push_str("\" ");
         }
         output.push_str("alt=\"\" />");
@@ -330,13 +330,13 @@ impl RenderHtml for Tabs {
 // Helper functions remain as they're used internally
 fn render_icon(output: &mut Buffer, icon: &str) {
     output.push_str("<img src=\"/assets/icons/");
-    output.push_html(icon);
+    output.push_uri(icon);
     output.push_str(".png\" alt=\"icon\" />");
 }
 
 fn render_external_image(output: &mut Buffer, src: &str) {
     output.push_str("<img src=\"");
-    output.push_html(src);
+    output.push_url(src);
     output.push_str("\" alt=\"\" />");
 }
 

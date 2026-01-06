@@ -4,7 +4,7 @@
 
 body {
     margin: 0;
-    padding: 0;
+    padding: 1rem;
     font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
 }
 
@@ -132,7 +132,6 @@ button img {
     height: 6px;
     border-radius: 3px;
     outline: none;
-    -webkit-appearance: none;
     background: var(--dark-color, rgba(0, 0, 0, 0.1));
 }
 
@@ -458,5 +457,64 @@ textarea.text {
 
     .notification {
         padding: 0.75rem;
+    }
+}
+
+/* Remote list - grid layout */
+.remote-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+    gap: 1rem;
+}
+
+.remote-list li {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 1rem;
+    border: 1px solid rgba(0, 0, 0, 0.1);
+    border-radius: 8px;
+    background: var(--theme-light-default-color, var(--default-color, transparent));
+    transition: transform 0.1s, background 0.2s;
+}
+
+.remote-list li:hover {
+    background: var(--theme-light-focus-color, rgba(0, 0, 0, 0.05));
+    transform: translateY(-2px);
+}
+
+.remote-list a {
+    text-decoration: none;
+    color: inherit;
+    text-align: center;
+    width: 100%;
+}
+
+/* Remote icon in grid */
+.remote-icon {
+    width: 48px;
+    height: 48px;
+    margin-bottom: 0.5rem;
+    display: block;
+    margin-left: auto;
+    margin-right: auto;
+}
+
+@media (max-width: 480px) {
+    .remote-list {
+        grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
+        gap: 0.5rem;
+    }
+
+    .remote-list li {
+        padding: 0.75rem;
+    }
+
+    .remote-icon {
+        width: 40px;
+        height: 40px;
     }
 }

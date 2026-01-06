@@ -61,6 +61,11 @@ fn load_remote(
     )
     .context("failed to parse meta.prop")?;
 
+    if meta.hidden {
+        tracing::info!("skipping remote {remote_id} because it is marked as hidden");
+        return Ok(None);
+    }
+
     if !meta.is_compatible() {
         tracing::info!("skipping remote {remote_id} due to incompatible platform settings");
         return Ok(None);

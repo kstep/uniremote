@@ -11,3 +11,4 @@ axum.workspace = true
 tracing.workspace = true
 
 html-escape = "0.2"
+uri_encode = "1"

@@ -1641,6 +1641,7 @@ dependencies = [
  "html-escape",
  "tracing",
  "uniremote-core",
+ "uri_encode",
 ]
 
 [[package]]
@@ -1662,6 +1663,7 @@ dependencies = [
  "serde",
  "serde_json",
  "tokio",
+ "tokio-util",
  "tower-http",
  "tracing",
  "tracing-subscriber",
@@ -1671,6 +1673,12 @@ dependencies = [
  "uniremote-render",
  "xdg",
 ]
+
+[[package]]
+name = "uri_encode"
+version = "1.0.4"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "9666edb2c10ee91354ec062e9e2d84896c2437378484c566d3523f9b8daf0129"
 
 [[package]]
 name = "utf8-width"

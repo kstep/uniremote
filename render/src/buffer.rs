@@ -47,6 +47,16 @@ impl Buffer {
         html_escape::encode_safe_to_string(s, &mut self.content);
     }
 
+    pub fn push_uri(&mut self, s: &str) {
+        let encoded = uri_encode::encode_uri_component(s);
+        self.content.push_str(&encoded);
+    }
+
+    pub fn push_url(&mut self, s: &str) {
+        let encoded = uri_encode::encode_uri(s);
+        self.content.push_str(&encoded);
+    }
+
     pub fn push_char(&mut self, c: char) {
         self.content.push(c);
     }

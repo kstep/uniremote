@@ -62,6 +62,7 @@ pub async fn run(
     let app = Router::new()
         .route("/", get(handlers::list_remotes))
         .route("/r/{id}", get(handlers::get_remote))
+        .route("/r/{id}/icon", get(handlers::get_remote_icon))
         .route("/api/r/{id}/call", post(handlers::call_remote_action))
         .nest_service("/assets", ServeDir::new(ASSETS_DIR))
         .layer(TraceLayer::new_for_http())
