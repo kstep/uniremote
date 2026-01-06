@@ -19,30 +19,29 @@ Key features:
 The project uses a modular architecture with multiple specialized crates:
 
 ```
-┌─────────────────────────────────────────────────────────────┐
-│                      uniremote-server                        │
-│  (HTTP server, routing, authentication, QR code generation)  │
-└───────┬─────────────────┬─────────────────┬─────────────────┘
-        │                 │                 │
-        ▼                 ▼                 ▼
-┌───────────────┐  ┌──────────────┐  ┌─────────────────┐
-│ uniremote-    │  │ uniremote-   │  │ uniremote-      │
-│   render      │  │   loader     │  │    lua          │
-│ (HTML output) │  │(Config load) │  │(Lua execution)  │
-└───────────────┘  └──────┬───────┘  └────────┬────────┘
-                          │                   │
-                          ▼                   ▼
-                   ┌──────────────────────────────┐
-                   │      uniremote-core          │
-                   │ (Data structures, types)     │
-                   └──────────────┬───────────────┘
-                                  │
-                                  ▼
-                          ┌───────────────┐
-                          │ uniremote-    │
-                          │   input       │
-                          │(Input backend)│
-                          └───────────────┘
+                    ┌─────────────────────────────┐
+                    │    uniremote-server         │
+                    │  (HTTP server, routing,     │
+                    │   auth, QR code)            │
+                    └──┬─────────┬─────────┬──────┘
+                       │         │         │
+           ┌───────────┘         │         └──────────┐
+           │                     │                    │
+           ▼                     ▼                    ▼
+    ┌────────────┐       ┌─────────────┐      ┌────────────┐
+    │ uniremote- │       │ uniremote-  │      │ uniremote- │
+    │  render    │       │   loader    │      │    lua     │
+    │  (HTML)    │       │  (Config)   │      │  (Script)  │
+    └─────┬──────┘       └──────┬──────┘      └──────┬─────┘
+          │                     │ │                   │ │
+          │                     │ └───────────────┐   │ │
+          │                     │                 │   │ │
+          │                     ▼                 ▼   ▼ ▼
+          │              ┌──────────────┐   ┌────────────┐
+          └─────────────▶│ uniremote-   │   │ uniremote- │
+                         │    core      │   │   input    │
+                         │ (Data types) │   │  (uinput)  │
+                         └──────────────┘   └────────────┘
 ```
 
 ### Data Flow
