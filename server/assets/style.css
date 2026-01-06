@@ -300,8 +300,6 @@ textarea.text {
 
 /* Individual tab container - use display: contents for inactive tabs */
 .tab {
-    flex: 1 1 0;
-    min-width: 0;
     display: contents;
 }
 
