@@ -94,51 +94,12 @@ uniremote/
 ├── LICENSE                 # MIT License
 ├── README.md               # This file
 ├── rustfmt.toml            # Rust formatting configuration
-│
 ├── core/                   # Core types and data structures
-│   ├── Cargo.toml
-│   └── src/
-│       ├── lib.rs
-│       ├── id.rs           # ID types (RemoteId, ActionId)
-│       ├── layout.rs       # Layout data structures
-│       └── meta.rs         # Remote metadata
-│
 ├── input/                  # Input backend abstraction
-│   ├── Cargo.toml
-│   └── src/
-│       └── lib.rs          # Input API and uinput backend
-│
 ├── loader/                 # Configuration loader
-│   ├── Cargo.toml
-│   └── src/
-│       └── lib.rs          # Remote loading logic
-│
 ├── lua/                    # Lua scripting engine
-│   ├── Cargo.toml
-│   └── src/
-│       ├── lib.rs
-│       ├── state.rs        # Lua state management
-│       ├── keyboard.rs     # Keyboard API for Lua
-│       ├── mouse.rs        # Mouse API for Lua
-│       └── script.rs       # Script execution utilities
-│
 ├── render/                 # HTML rendering
-│   ├── Cargo.toml
-│   └── src/
-│       ├── lib.rs
-│       ├── buffer.rs       # HTML output buffer
-│       └── layout.rs       # Layout rendering logic
-│
 └── server/                 # Main HTTP server
-    ├── Cargo.toml
-    ├── assets/             # Static web assets
-    └── src/
-        ├── main.rs         # Application entry point
-        ├── lib.rs          # Server setup and routing
-        ├── args.rs         # Command-line arguments
-        ├── auth.rs         # Authentication
-        ├── handlers.rs     # HTTP request handlers
-        └── qr.rs           # QR code generation
 ```
 
 ## Building the Project
