@@ -9,7 +9,8 @@ use std::{
 use anyhow::{Context, Result};
 use uniremote_core::{Layout, PLATFORM, Platform, Remote, RemoteId, RemoteMeta};
 use uniremote_input::UInputBackend;
-use uniremote_lua::{LuaState, LuaWorker};
+use uniremote_lua::LuaState;
+use uniremote_worker::LuaWorker;
 
 pub struct LoadedRemote {
     pub remote: Remote,

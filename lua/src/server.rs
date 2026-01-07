@@ -45,8 +45,6 @@ pub fn load(lua: &Lua, libs: &Table) -> anyhow::Result<()> {
 
 #[cfg(test)]
 mod tests {
-    use tokio::sync::broadcast;
-
     use super::*;
 
     #[test]
@@ -54,8 +52,8 @@ mod tests {
         let lua = Lua::new();
         let libs = lua.create_table().unwrap();
 
-        // Create a broadcast channel and add it to lua state
-        let (tx, mut rx) = broadcast::channel(10);
+        // Create a flume channel and add it to lua state
+        let (tx, rx) = flume::unbounded();
         lua.set_app_data(tx);
 
         // Load the server module
@@ -90,7 +88,7 @@ mod tests {
         let lua = Lua::new();
         let libs = lua.create_table().unwrap();
 
-        let (tx, mut rx) = broadcast::channel(10);
+        let (tx, rx) = flume::unbounded();
         lua.set_app_data(tx);
 
         load(&lua, &libs).unwrap();
@@ -136,7 +134,7 @@ mod tests {
         let lua = Lua::new();
         let libs = lua.create_table().unwrap();
 
-        let (tx, mut rx) = broadcast::channel(10);
+        let (tx, rx) = flume::unbounded();
         lua.set_app_data(tx);
 
         load(&lua, &libs).unwrap();
@@ -150,7 +148,7 @@ mod tests {
                 text = "string",
                 number = 42,
                 bool = true,
-                float = 3.14
+                float = 2.5
             })
         "#,
         )
@@ -165,7 +163,7 @@ mod tests {
                 assert_eq!(args["text"], "string");
                 assert_eq!(args["number"], 42);
                 assert_eq!(args["bool"], true);
-                assert_eq!(args["float"], 3.14);
+                assert_eq!(args["float"], 2.5);
             }
             _ => panic!("Expected Update message"),
         }

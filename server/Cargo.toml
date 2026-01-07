@@ -8,7 +8,7 @@ license = "MIT"
 uniremote-core = { path = "../core" }
 uniremote-loader = { path = "../loader" }
 uniremote-render = { path = "../render" }
-uniremote-lua = { path = "../lua" }
+uniremote-worker = { path = "../worker" }
 
 axum = { workspace = true, features = ["ws"] }
 anyhow.workspace = true
