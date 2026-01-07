@@ -16,7 +16,7 @@ use futures_util::{
 };
 use headers::{Header, HeaderName, HeaderValue};
 use uniremote_core::{ClientMessage, RemoteId, ServerMessage};
-use uniremote_lua::LuaWorker;
+use uniremote_worker::LuaWorker;
 
 use crate::AppState;
 

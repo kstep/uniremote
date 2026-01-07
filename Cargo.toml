@@ -1,5 +1,5 @@
 [workspace]
-members = ["core", "loader", "render", "input", "lua", "server"]
+members = ["core", "loader", "render", "input", "lua", "worker", "server"]
 resolver = "2"
 
 [workspace.dependencies]

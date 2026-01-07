@@ -5,10 +5,8 @@ use std::sync::{
 
 use anyhow::anyhow;
 use flume::{Receiver, SendError, Sender};
-use mlua::MaybeSend;
 use uniremote_core::{CallActionRequest, ServerMessage};
-
-use crate::LuaState;
+use uniremote_lua::LuaState;
 
 const CHANNEL_BUFFER_SIZE: usize = 100;
 const MAX_SEND_RETRIES: usize = 10;
@@ -53,7 +51,7 @@ impl LuaWorker {
         });
     }
 
-    pub fn add_state(&self, state: impl MaybeSend + 'static) {
+    pub fn add_state<T: Send + 'static>(&self, state: T) {
         self.state.add_state(state);
     }
 

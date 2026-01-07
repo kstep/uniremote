@@ -1728,6 +1728,7 @@ dependencies = [
  "uniremote-core",
  "uniremote-input",
  "uniremote-lua",
+ "uniremote-worker",
  "walkdir",
 ]
 
@@ -1784,9 +1785,21 @@ dependencies = [
  "tracing-subscriber",
  "uniremote-core",
  "uniremote-loader",
- "uniremote-lua",
  "uniremote-render",
+ "uniremote-worker",
  "xdg",
+]
+
+[[package]]
+name = "uniremote-worker"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "flume",
+ "tokio",
+ "tracing",
+ "uniremote-core",
+ "uniremote-lua",
 ]
 
 [[package]]

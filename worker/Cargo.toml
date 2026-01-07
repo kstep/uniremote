@@ -1,0 +1,14 @@
+[package]
+name = "uniremote-worker"
+version = "0.1.0"
+edition = "2024"
+license = "MIT"
+
+[dependencies]
+uniremote-core = { path = "../core" }
+uniremote-lua = { path = "../lua" }
+
+anyhow.workspace = true
+tokio.workspace = true
+flume.workspace = true
+tracing.workspace = true
