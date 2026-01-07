@@ -11,7 +11,7 @@ pub use message::{ClientMessage, ServerMessage};
 pub use meta::{PLATFORM, Platform, RemoteMeta};
 use serde::{Deserialize, Serialize};
 
-#[derive(Debug, Clone)]
+#[derive(Debug)]
 pub struct Remote {
     pub path: PathBuf,
     pub meta: RemoteMeta,

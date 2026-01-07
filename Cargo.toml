@@ -4,6 +4,7 @@ resolver = "2"
 
 [workspace.dependencies]
 tokio = { version = "1", features = ["full"] }
+flume = "0.12"
 axum = { version = "0.8", features = ["json"] }
 mlua = { version = "0.11", features = ["lua54", "vendored", "send", "serde"] }
 tracing = "0.1"

@@ -12,6 +12,7 @@ uniremote-input = { path = "../input" }
 anyhow.workspace = true
 serde.workspace = true
 tracing.workspace = true
+tokio.workspace = true
 
 walkdir = "2"
 serde-java-properties = "0.2"

@@ -12,7 +12,7 @@ pub const PLATFORM: Platform = if cfg!(target_os = "linux") {
     Platform::Legacy
 };
 
-#[derive(Serialize, Deserialize, Debug, Clone)]
+#[derive(Serialize, Deserialize, Debug)]
 pub struct RemoteMeta {
     #[serde(rename = "meta.name")]
     pub name: String,

@@ -2,7 +2,7 @@ use serde::Deserialize;
 
 use crate::id::{ActionId, LayoutId};
 
-#[derive(Default, Debug, Clone, Deserialize)]
+#[derive(Default, Debug, Deserialize)]
 #[serde(rename = "layout")]
 pub struct Layout {
     #[serde(default, rename = "@orientation")]
@@ -30,7 +30,7 @@ pub struct Layout {
     pub light: Option<Theme>,
 }
 
-#[derive(Debug, Clone, Deserialize)]
+#[derive(Debug, Deserialize)]
 #[serde(rename = "grid")]
 pub struct Grid {
     #[serde(default, rename = "@id")]
@@ -39,7 +39,7 @@ pub struct Grid {
     pub children: Vec<Widget>,
 }
 
-#[derive(Debug, Clone, Deserialize)]
+#[derive(Debug, Deserialize)]
 #[serde(rename = "row")]
 pub struct Row {
     #[serde(default, rename = "@id")]
@@ -48,7 +48,7 @@ pub struct Row {
     pub children: Vec<Widget>,
 }
 
-#[derive(Debug, Clone, Deserialize)]
+#[derive(Debug, Deserialize)]
 #[serde(rename_all = "lowercase")]
 pub enum Widget {
     Button(Button),
@@ -65,7 +65,7 @@ pub enum Widget {
     Space,
 }
 
-#[derive(Default, Debug, Clone, Deserialize)]
+#[derive(Default, Debug, Deserialize, Copy, Clone)]
 #[serde(rename_all = "lowercase")]
 pub enum Orientation {
     #[default]
@@ -73,7 +73,7 @@ pub enum Orientation {
     Landscape,
 }
 
-#[derive(Default, Debug, Clone, Deserialize)]
+#[derive(Default, Debug, Deserialize, Copy, Clone)]
 #[serde(rename_all = "lowercase")]
 pub enum Scroll {
     #[default]
@@ -83,7 +83,7 @@ pub enum Scroll {
     Both,
 }
 
-#[derive(Default, Debug, Clone, Deserialize)]
+#[derive(Default, Debug, Deserialize, Copy, Clone)]
 #[serde(rename_all = "lowercase")]
 pub enum Visibility {
     #[default]
@@ -92,7 +92,7 @@ pub enum Visibility {
     Gone,
 }
 
-#[derive(Default, Debug, Clone, Deserialize)]
+#[derive(Default, Debug, Deserialize, Copy, Clone)]
 #[serde(rename_all = "lowercase")]
 pub enum TextAlign {
     #[default]
@@ -101,7 +101,7 @@ pub enum TextAlign {
     Center,
 }
 
-#[derive(Default, Debug, Clone, Deserialize)]
+#[derive(Default, Debug, Deserialize, Copy, Clone)]
 #[serde(rename_all = "lowercase")]
 pub enum Scale {
     #[default]
@@ -111,7 +111,7 @@ pub enum Scale {
     Native,
 }
 
-#[derive(Debug, Clone, Deserialize)]
+#[derive(Debug, Deserialize)]
 pub struct Label {
     #[serde(default, rename = "@id")]
     pub id: Option<LayoutId>,
@@ -146,7 +146,7 @@ pub struct Label {
     pub light: Option<Theme>,
 }
 
-#[derive(Debug, Clone, Deserialize)]
+#[derive(Debug, Deserialize)]
 #[serde(rename = "button")]
 pub struct Button {
     #[serde(default, rename = "@id")]
@@ -184,7 +184,7 @@ pub struct Button {
     pub light: Option<Theme>,
 }
 
-#[derive(Debug, Clone, Deserialize)]
+#[derive(Debug, Deserialize)]
 #[serde(rename = "slider")]
 pub struct Slider {
     #[serde(default, rename = "@id")]
@@ -222,7 +222,7 @@ fn default_progressmax() -> usize {
     100
 }
 
-#[derive(Debug, Clone, Deserialize)]
+#[derive(Debug, Deserialize)]
 #[serde(rename = "text")]
 pub struct Text {
     #[serde(default, rename = "@id")]
@@ -254,7 +254,7 @@ pub struct Text {
     pub light: Option<Theme>,
 }
 
-#[derive(Debug, Clone, Deserialize)]
+#[derive(Debug, Deserialize)]
 #[serde(rename = "toggle")]
 pub struct Toggle {
     #[serde(default, rename = "@id")]
@@ -294,7 +294,7 @@ pub struct Toggle {
     pub light: Option<Theme>,
 }
 
-#[derive(Debug, Clone, Deserialize)]
+#[derive(Debug, Deserialize)]
 #[serde(rename = "tabs")]
 pub struct Tabs {
     #[serde(default, rename = "@id")]
@@ -320,7 +320,7 @@ pub struct Tabs {
     pub light: Option<Theme>,
 }
 
-#[derive(Debug, Clone, Deserialize)]
+#[derive(Debug, Deserialize)]
 #[serde(rename = "tab")]
 pub struct Tab {
     #[serde(default, rename = "@id")]
@@ -344,7 +344,7 @@ pub struct Tab {
     pub light: Option<Theme>,
 }
 
-#[derive(Debug, Clone, Deserialize)]
+#[derive(Debug, Deserialize)]
 #[serde(rename = "image")]
 pub struct Image {
     #[serde(default, rename = "@id")]
@@ -366,7 +366,7 @@ pub struct Image {
     pub light: Option<Theme>,
 }
 
-#[derive(Debug, Clone, Deserialize)]
+#[derive(Debug, Deserialize)]
 #[serde(rename = "touch")]
 pub struct Touch {
     #[serde(default, rename = "@id")]
@@ -410,7 +410,7 @@ pub struct Touch {
     pub light: Option<Theme>,
 }
 
-#[derive(Debug, Clone, Deserialize)]
+#[derive(Debug, Deserialize)]
 #[serde(rename = "list")]
 pub struct List {
     #[serde(default, rename = "@id")]
@@ -432,7 +432,7 @@ pub struct List {
     pub light: Option<Theme>,
 }
 
-#[derive(Debug, Clone, Deserialize)]
+#[derive(Debug, Deserialize)]
 #[serde(rename = "item")]
 pub struct Item {
     #[serde(default, rename = "@id")]
@@ -458,7 +458,7 @@ pub struct Item {
     pub light: Option<Theme>,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug)]
 pub struct Theme {
     pub color: Option<String>,
     pub normal: Option<String>,

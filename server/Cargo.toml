@@ -13,6 +13,7 @@ uniremote-lua = { path = "../lua" }
 axum = { workspace = true, features = ["ws"] }
 anyhow.workspace = true
 tokio.workspace = true
+flume.workspace = true
 serde.workspace = true
 serde_json.workspace = true
 tracing.workspace = true

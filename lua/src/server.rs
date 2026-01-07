@@ -1,9 +1,9 @@
+use flume::Sender;
 use mlua::{Lua, LuaSerdeExt, Table, Variadic};
-use tokio::sync::broadcast;
 use uniremote_core::{ActionId, ServerMessage};
 
-fn get_broadcast_sender(lua: &Lua) -> broadcast::Sender<ServerMessage> {
-    lua.app_data_ref::<broadcast::Sender<ServerMessage>>()
+fn get_broadcast_sender(lua: &Lua) -> Sender<ServerMessage> {
+    lua.app_data_ref::<Sender<ServerMessage>>()
         .expect("broadcast sender not found in lua state")
         .clone()
 }

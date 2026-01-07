@@ -1,15 +1,9 @@
-use std::sync::Arc;
+use core::fmt;
 
-use axum::{extract::FromRef, http::StatusCode};
-use axum_extra::{
-    TypedHeader,
-    headers::{Authorization, authorization::Bearer},
-};
-
-use crate::AppState;
+use axum::http::StatusCode;
 
 /// Authentication token generated on server start
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub struct AuthToken(String);
 
 impl AuthToken {
@@ -23,40 +17,20 @@ impl AuthToken {
         Self(token)
     }
 
-    /// Get the token string
-    pub fn as_str(&self) -> &str {
-        &self.0
-    }
-
     /// Validate a token string against this token
-    pub fn validate(&self, token: &str) -> bool {
-        token == self.as_str()
+    pub fn validate(&self, token: &str) -> Result<(), StatusCode> {
+        if token == self.0 {
+            Ok(())
+        } else {
+            tracing::warn!("unauthorized access attempt with invalid token");
+            Err(StatusCode::UNAUTHORIZED)
+        }
     }
 }
 
-/// Validate the authentication token from Authorization Bearer header
-pub fn validate_token<S>(
-    auth_header: Option<TypedHeader<Authorization<Bearer>>>,
-    state: &S,
-) -> Result<(), StatusCode>
-where
-    Arc<AppState>: FromRef<S>,
-{
-    let app_state: Arc<AppState> = Arc::<AppState>::from_ref(state);
-
-    match auth_header {
-        Some(TypedHeader(Authorization(bearer))) => {
-            if bearer.token() == app_state.auth_token.as_str() {
-                Ok(())
-            } else {
-                tracing::warn!("unauthorized access attempt with invalid token");
-                Err(StatusCode::UNAUTHORIZED)
-            }
-        }
-        None => {
-            tracing::warn!("unauthorized access attempt without authorization header");
-            Err(StatusCode::UNAUTHORIZED)
-        }
+impl fmt::Display for AuthToken {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{}", self.0)
     }
 }
 
@@ -70,10 +44,10 @@ mod tests {
         let token2 = AuthToken::generate();
 
         // Tokens should be different
-        assert_ne!(token1.as_str(), token2.as_str());
+        assert_ne!(token1, token2);
 
         // Token should be hex-encoded (32 chars for 16 bytes)
-        assert_eq!(token1.as_str().len(), 32);
-        assert!(token1.as_str().chars().all(|c| c.is_ascii_hexdigit()));
+        assert_eq!(token1.0.len(), 32);
+        assert!(token1.0.chars().all(|c| c.is_ascii_hexdigit()));
     }
 }

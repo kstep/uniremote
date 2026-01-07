@@ -21,7 +21,7 @@ use tokio_util::io::ReaderStream;
 use uniremote_core::{CallActionRequest, RemoteId};
 use uniremote_render::{Buffer, RenderHtml};
 
-use crate::{AppState, auth::validate_token};
+use crate::AppState;
 
 const CONTENT_TYPE_HTML: MediaType = MediaType::from_parts(TEXT, HTML, None, &[]);
 
@@ -55,9 +55,9 @@ fn list_remotes_html(state: &AppState) -> Response {
 
     for (id, remote) in remotes {
         html.push_str(r#"<li><a href="/r/"#);
-        html.push_uri(&id);
+        html.push_uri(id);
         html.push_str(r#""><img class="remote-icon" src="/r/"#);
-        html.push_uri(&id);
+        html.push_uri(id);
         html.push_str(r#"/icon" alt=""><div>"#);
         html.push_html(&remote.meta.name);
         html.push_str(r#"</div></a></li>"#);
@@ -112,20 +112,19 @@ pub async fn get_remote(
 pub async fn call_remote_action(
     Path(remote_id): Path<RemoteId>,
     State(state): State<Arc<AppState>>,
-    auth_header: Option<TypedHeader<Authorization<Bearer>>>,
-    Json(payload): Json<CallActionRequest>,
+    TypedHeader(auth_header): TypedHeader<Authorization<Bearer>>,
+    Json(request): Json<CallActionRequest>,
 ) -> Result<Json<serde_json::Value>, StatusCode> {
-    validate_token(auth_header, &state)?;
+    state.auth_token.validate(auth_header.token())?;
 
-    let _remote_with_channel = state.remotes.get(&remote_id).ok_or(StatusCode::NOT_FOUND)?;
+    let remote = state.remotes.get(&remote_id).ok_or(StatusCode::NOT_FOUND)?;
 
-    tracing::info!("call action '{}' on remote '{remote_id}'", payload.action);
+    tracing::info!("call action '{}' on remote '{remote_id}'", request.action);
 
-    state
-        .worker_tx
-        .send((remote_id, payload))
-        .await
-        .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
+    if let Err(error) = remote.worker.send(request).await {
+        tracing::error!("failed to send action request to worker: {error:#}");
+        return Err(StatusCode::SERVICE_UNAVAILABLE);
+    }
 
     Ok(Json(serde_json::json!({
         "status": "pending",

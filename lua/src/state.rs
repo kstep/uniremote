@@ -47,6 +47,17 @@ impl LuaState {
         Ok(settings)
     }
 
+    pub fn set_settings(
+        &self,
+        settings: impl IntoIterator<Item = (String, String)>,
+    ) -> anyhow::Result<()> {
+        let table = self.settings()?;
+        for (key, value) in settings {
+            table.raw_set(key, value)?;
+        }
+        Ok(())
+    }
+
     pub fn detect(&self) -> anyhow::Result<bool> {
         let globals = self.lua.globals();
         let events: Table = globals.get("events")?;

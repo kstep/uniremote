@@ -5,12 +5,18 @@ use axum::{
         Path, State, WebSocketUpgrade,
         ws::{Message, WebSocket},
     },
+    http::StatusCode,
     response::Response,
 };
 use axum_extra::TypedHeader;
-use futures_util::{sink::SinkExt, stream::StreamExt};
+use flume::Receiver;
+use futures_util::{
+    sink::SinkExt,
+    stream::{SplitSink, SplitStream, StreamExt},
+};
 use headers::{Header, HeaderName, HeaderValue};
-use uniremote_core::{ClientMessage, RemoteId};
+use uniremote_core::{ClientMessage, RemoteId, ServerMessage};
+use uniremote_lua::LuaWorker;
 
 use crate::AppState;
 
@@ -55,101 +61,80 @@ impl SecWebSocketProtocol {
 pub async fn websocket_handler(
     Path(remote_id): Path<RemoteId>,
     State(state): State<Arc<AppState>>,
-    protocol: Option<TypedHeader<SecWebSocketProtocol>>,
+    TypedHeader(protocol): TypedHeader<SecWebSocketProtocol>,
     ws: WebSocketUpgrade,
-) -> Result<Response, axum::http::StatusCode> {
+) -> Result<Response, StatusCode> {
     // Extract token from Sec-WebSocket-Protocol header (format: "bearer.{token}")
-    let token = protocol
-        .as_ref()
-        .and_then(|TypedHeader(p)| p.bearer_token())
-        .ok_or(axum::http::StatusCode::UNAUTHORIZED)?;
+    let token = protocol.bearer_token().ok_or(StatusCode::UNAUTHORIZED)?;
 
-    // Validate token
-    if !state.auth_token.validate(token) {
-        return Err(axum::http::StatusCode::UNAUTHORIZED);
-    }
+    state.auth_token.validate(token)?;
 
-    let _remote = state
-        .remotes
-        .get(&remote_id)
-        .ok_or(axum::http::StatusCode::NOT_FOUND)?;
+    let remote = state.remotes.get(&remote_id).ok_or(StatusCode::NOT_FOUND)?;
 
-    // Accept the WebSocket with the same protocol to complete the handshake
+    let worker = remote.worker.clone();
     Ok(ws
         .protocols([format!("bearer.{token}")])
-        .on_upgrade(move |socket| handle_websocket(socket, remote_id, state)))
+        .on_upgrade(move |socket| handle_websocket(socket, worker)))
 }
 
-async fn handle_websocket(socket: WebSocket, remote_id: RemoteId, state: Arc<AppState>) {
-    let (mut sender, mut receiver) = socket.split();
+async fn handle_websocket(socket: WebSocket, worker: LuaWorker) {
+    let (tx, rx) = socket.split();
 
-    // Get the broadcast channel for this specific remote from RemoteWithChannel
-    let broadcast_tx = match state.remotes.get(&remote_id) {
-        Some(remote_with_channel) => &remote_with_channel.broadcast_tx,
-        None => {
-            tracing::error!("no remote found for: {remote_id}");
-            return;
-        }
-    };
-    let mut broadcast_rx = broadcast_tx.subscribe();
-
-    // Spawn a task to forward broadcast messages to this WebSocket
-    let mut send_task = tokio::spawn(async move {
-        while let Ok(msg) = broadcast_rx.recv().await {
-            let json = match serde_json::to_string(&msg) {
-                Ok(json) => json,
-                Err(e) => {
-                    tracing::error!("failed to serialize server message: {e}");
-                    continue;
-                }
-            };
-
-            if sender.send(Message::Text(json.into())).await.is_err() {
-                break;
-            }
-        }
-    });
-
-    // Handle incoming messages from client
-    let worker_tx = state.worker_tx.clone();
-    let mut recv_task = tokio::spawn(async move {
-        while let Some(msg) = receiver.next().await {
-            match msg {
-                Ok(Message::Text(text)) => {
-                    let client_msg: ClientMessage = match serde_json::from_str(&text) {
-                        Ok(msg) => msg,
-                        Err(e) => {
-                            tracing::error!("failed to parse client message: {e}");
-                            continue;
-                        }
-                    };
-
-                    match client_msg {
-                        ClientMessage::CallAction(request) => {
-                            tracing::info!(
-                                "websocket call action '{}' on remote '{remote_id}'",
-                                request.action
-                            );
-
-                            if let Err(e) = worker_tx.send((remote_id.clone(), request)).await {
-                                tracing::error!("failed to send action to worker: {e}");
-                            }
-                        }
-                    }
-                }
-                Ok(Message::Close(_)) => break,
-                Ok(_) => {}
-                Err(e) => {
-                    tracing::error!("websocket error: {e}");
-                    break;
-                }
-            }
-        }
-    });
+    let mut send_task = tokio::spawn(handle_outgoing_messages(tx, worker.subscribe()));
+    let mut recv_task = tokio::spawn(handle_incoming_messages(worker, rx));
 
     // Wait for either task to finish
     tokio::select! {
         _ = &mut send_task => recv_task.abort(),
         _ = &mut recv_task => send_task.abort(),
+    }
+}
+
+async fn handle_outgoing_messages(
+    mut sender: SplitSink<WebSocket, Message>,
+    receiver: Receiver<ServerMessage>,
+) {
+    while let Ok(msg) = receiver.recv_async().await {
+        let json = match serde_json::to_string(&msg) {
+            Ok(json) => json,
+            Err(e) => {
+                tracing::error!("failed to serialize server message: {e}");
+                continue;
+            }
+        };
+
+        if sender.send(Message::Text(json.into())).await.is_err() {
+            break;
+        }
+    }
+}
+
+async fn handle_incoming_messages(worker: LuaWorker, mut receiver: SplitStream<WebSocket>) {
+    while let Some(msg) = receiver.next().await {
+        match msg {
+            Ok(Message::Text(text)) => {
+                let client_msg: ClientMessage = match serde_json::from_str(&text) {
+                    Ok(msg) => msg,
+                    Err(e) => {
+                        tracing::error!("failed to parse client message: {e}");
+                        continue;
+                    }
+                };
+
+                match client_msg {
+                    ClientMessage::CallAction(request) => {
+                        if let Err(error) = worker.send(request).await {
+                            tracing::error!("failed to send action to worker: {error}");
+                        }
+                    }
+                }
+            }
+            Ok(Message::Close(_)) => break,
+            Ok(_) => {}
+            Err(e) => {
+                tracing::error!("websocket error: {e}");
+                break;
+            }
+        }
     }
 }

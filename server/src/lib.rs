@@ -6,13 +6,13 @@ use axum::{
     http::{Method, header},
     routing::{get, post},
 };
-use tokio::sync::{broadcast, mpsc::Sender};
 use tower_http::{
     cors::{AllowOrigin, CorsLayer},
     services::ServeDir,
     trace::TraceLayer,
 };
-use uniremote_core::{CallActionRequest, Remote, RemoteId, ServerMessage};
+use uniremote_core::RemoteId;
+use uniremote_loader::LoadedRemote;
 
 mod auth;
 mod handlers;
@@ -26,20 +26,13 @@ use crate::{auth::AuthToken, qr::print_qr_code};
 
 const ASSETS_DIR: &str = "server/assets";
 
-pub struct RemoteWithChannel {
-    pub remote: Remote,
-    pub broadcast_tx: broadcast::Sender<ServerMessage>,
-}
-
 pub struct AppState {
-    worker_tx: Sender<(RemoteId, CallActionRequest)>,
-    remotes: HashMap<RemoteId, RemoteWithChannel>,
+    remotes: HashMap<RemoteId, LoadedRemote>,
     auth_token: AuthToken,
 }
 
 pub async fn run(
-    worker_tx: Sender<(RemoteId, CallActionRequest)>,
-    remotes: HashMap<RemoteId, RemoteWithChannel>,
+    remotes: HashMap<RemoteId, LoadedRemote>,
     bind_addr: BindAddress,
 ) -> anyhow::Result<()> {
     let auth_token = AuthToken::generate();
@@ -55,7 +48,6 @@ pub async fn run(
     print_qr_code(local_addr, &auth_token);
 
     let state = Arc::new(AppState {
-        worker_tx,
         remotes,
         auth_token,
     });
