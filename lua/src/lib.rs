@@ -3,7 +3,7 @@ use std::sync::Arc;
 pub use state::LuaState;
 use uniremote_input::UInputBackend;
 
-pub mod include;
+pub mod globals;
 pub mod keyboard;
 pub mod mouse;
 pub mod script;

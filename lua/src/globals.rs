@@ -1,42 +1,38 @@
-use std::path::{Path, PathBuf};
+use std::path::Path;
 
 use mlua::Lua;
 
-fn include(lua: &Lua, filename: String) -> mlua::Result<()> {
-    // Get the remote directory from app_data
-    let remote_dir = lua
-        .app_data_ref::<PathBuf>()
-        .ok_or_else(|| mlua::Error::runtime("remote directory not set in lua state"))?;
-
-    // Resolve the path relative to the remote directory
-    let file_path = remote_dir.join(&filename);
-
-    // Read the file content
-    let script_content = std::fs::read(&file_path).map_err(|error| {
-        mlua::Error::runtime(format!(
-            "failed to read file '{}': {}",
-            file_path.display(),
-            error
-        ))
-    })?;
-
-    // Execute the script in the current lua context
-    lua.load(script_content)
-        .set_name(filename)
-        .exec()
-        .map_err(|error| {
-            mlua::Error::runtime(format!("failed to execute included file: {}", error))
-        })?;
-
+pub fn load(lua: &Lua, remote_dir: &Path) -> anyhow::Result<()> {
+    load_include(lua, remote_dir)?;
     Ok(())
 }
 
-pub fn load(lua: &Lua, remote_dir: &Path) -> anyhow::Result<()> {
-    // Store the remote directory in lua app_data
-    lua.set_app_data(remote_dir.to_path_buf());
+fn load_include(lua: &Lua, remote_dir: &Path) -> anyhow::Result<()> {
+    // Clone the remote directory path to move into the closure
+    let remote_dir = remote_dir.to_path_buf();
 
-    // Create the include function and set it as a global
-    let include_fn = lua.create_function(include)?;
+    // Create the include function as a closure that captures remote_dir
+    let include_fn = lua.create_function(move |lua, filename: String| {
+        // Resolve the path relative to the remote directory
+        let file_path = remote_dir.join(&filename);
+
+        // Read the file content
+        let script_content = std::fs::read(&file_path).map_err(|error| {
+            mlua::Error::runtime(format!("failed to read file '{file_path}': {error}", file_path = file_path.display()))
+        })?;
+
+        // Execute the script in the current lua context
+        lua.load(script_content)
+            .set_name(filename)
+            .exec()
+            .map_err(|error| {
+                mlua::Error::runtime(format!("failed to execute included file: {error}"))
+            })?;
+
+        Ok(())
+    })?;
+
+    // Set it as a global
     lua.globals().set("include", include_fn)?;
 
     Ok(())
@@ -70,7 +66,7 @@ end
         // Create a main lua context
         let lua = Lua::new();
 
-        // Load the include module
+        // Load the globals
         load(&lua, temp_path).unwrap();
 
         // Test including the common.lua file
@@ -107,7 +103,7 @@ result = func_from_common("test")
         // Create a main lua context
         let lua = Lua::new();
 
-        // Load the include module
+        // Load the globals
         load(&lua, temp_path).unwrap();
 
         // Test including a file from a subdirectory
@@ -142,7 +138,7 @@ include("subdir/helper.lua")
         // Create a main lua context as if we're in the subdirectory
         let lua = Lua::new();
 
-        // Load the include module pointing to the remote directory
+        // Load the globals pointing to the remote directory
         load(&lua, &remote_dir).unwrap();
 
         // Test including a file from parent directory
@@ -206,7 +202,7 @@ end
         let actions = lua.create_table().unwrap();
         lua.globals().set("actions", actions).unwrap();
 
-        // Load the include module
+        // Load the globals
         load(&lua, temp_path).unwrap();
 
         // Test the example usage
