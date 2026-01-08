@@ -20,7 +20,12 @@ impl LuaState {
     pub fn new(script: &Path) -> anyhow::Result<Self> {
         let lua = Lua::new();
 
-        init_globals(&lua)?;
+        // Get the directory containing the script (remote directory)
+        let remote_dir = script
+            .parent()
+            .ok_or_else(|| anyhow::anyhow!("script path has no parent directory"))?;
+
+        crate::globals::load(&lua, remote_dir)?;
         load_modules(&lua)?;
 
         let script_content = std::fs::read(script)?;
@@ -124,14 +129,6 @@ impl LuaState {
 
         Ok(())
     }
-}
-
-fn init_globals(lua: &Lua) -> anyhow::Result<()> {
-    let globals = lua.globals();
-    globals.set("settings", lua.create_table()?)?;
-    globals.set("events", lua.create_table()?)?;
-    globals.set("actions", lua.create_table()?)?;
-    Ok(())
 }
 
 fn load_modules(lua: &Lua) -> anyhow::Result<()> {
