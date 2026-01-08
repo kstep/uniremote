@@ -18,7 +18,13 @@ use tokio::{
 
 static TIMER_ID_COUNTER: AtomicU64 = AtomicU64::new(1);
 
-type TimerMap = Arc<Mutex<HashMap<u64, (JoinHandle<()>, RegistryKey)>>>;
+struct TimerEntry {
+    handle: JoinHandle<()>,
+    registry_key: RegistryKey,
+    is_repeating: bool,
+}
+
+type TimerMap = Arc<Mutex<HashMap<u64, TimerEntry>>>;
 type CallbackSender = Sender<u64>;
 
 fn get_timer_map(lua: &Lua) -> TimerMap {
@@ -50,11 +56,15 @@ fn timeout(lua: &Lua, (callback, time_ms): (Function, u64)) -> mlua::Result<u64>
         let _ = callback_sender.send(tid);
     });
 
-    // Store the handle and registry key
-    timer_map
-        .lock()
-        .unwrap()
-        .insert(timer_id, (handle, registry_key));
+    // Store the timer entry (one-time timer)
+    timer_map.lock().unwrap().insert(
+        timer_id,
+        TimerEntry {
+            handle,
+            registry_key,
+            is_repeating: false,
+        },
+    );
 
     tracing::info!("created timeout timer with id: {timer_id}, time: {time_ms}ms");
     Ok(timer_id)
@@ -83,11 +93,15 @@ fn interval(lua: &Lua, (callback, time_ms): (Function, u64)) -> mlua::Result<u64
         }
     });
 
-    // Store the handle and registry key
-    timer_map
-        .lock()
-        .unwrap()
-        .insert(timer_id, (handle, registry_key));
+    // Store the timer entry (repeating timer)
+    timer_map.lock().unwrap().insert(
+        timer_id,
+        TimerEntry {
+            handle,
+            registry_key,
+            is_repeating: true,
+        },
+    );
 
     tracing::info!("created interval timer with id: {timer_id}, time: {time_ms}ms");
     Ok(timer_id)
@@ -126,11 +140,15 @@ fn schedule(lua: &Lua, (callback, iso_time): (Function, String)) -> mlua::Result
         let _ = callback_sender.send(tid);
     });
 
-    // Store the handle and registry key
-    timer_map
-        .lock()
-        .unwrap()
-        .insert(timer_id, (handle, registry_key));
+    // Store the timer entry (one-time timer)
+    timer_map.lock().unwrap().insert(
+        timer_id,
+        TimerEntry {
+            handle,
+            registry_key,
+            is_repeating: false,
+        },
+    );
 
     tracing::info!("created schedule timer with id: {timer_id}, time: {iso_time}");
     Ok(timer_id)
@@ -139,10 +157,10 @@ fn schedule(lua: &Lua, (callback, iso_time): (Function, String)) -> mlua::Result
 fn cancel(lua: &Lua, timer_id: u64) -> mlua::Result<()> {
     let timer_map = get_timer_map(lua);
 
-    if let Some((handle, registry_key)) = timer_map.lock().unwrap().remove(&timer_id) {
-        handle.abort();
+    if let Some(entry) = timer_map.lock().unwrap().remove(&timer_id) {
+        entry.handle.abort();
         // Clean up the registry key
-        let _ = lua.remove_registry_value(registry_key);
+        let _ = lua.remove_registry_value(entry.registry_key);
         tracing::info!("cancelled timer with id: {timer_id}");
     } else {
         tracing::warn!("attempted to cancel non-existent timer with id: {timer_id}");
@@ -173,12 +191,21 @@ fn start_callback_processor(
         while !stop_flag.load(Ordering::Relaxed) {
             // Block waiting for timer callbacks with a timeout
             if let Ok(timer_id) = receiver.recv_timeout(std::time::Duration::from_millis(100)) {
-                let timer_map_lock = timer_map.lock().unwrap();
-                if let Some((_handle, registry_key)) = timer_map_lock.get(&timer_id) {
-                    if let Ok(callback) = lua.registry_value::<Function>(registry_key) {
+                let mut timer_map_lock = timer_map.lock().unwrap();
+                if let Some(entry) = timer_map_lock.get(&timer_id) {
+                    let is_repeating = entry.is_repeating;
+                    if let Ok(callback) = lua.registry_value::<Function>(&entry.registry_key) {
                         drop(timer_map_lock); // Release lock before calling callback
                         if let Err(err) = callback.call::<()>(()) {
                             tracing::error!("timer callback error: {err}");
+                        }
+
+                        // Remove one-time timers after execution
+                        if !is_repeating {
+                            timer_map_lock = timer_map.lock().unwrap();
+                            if let Some(entry) = timer_map_lock.remove(&timer_id) {
+                                let _ = lua.remove_registry_value(entry.registry_key);
+                            }
                         }
                     }
                 }
