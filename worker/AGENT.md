@@ -27,7 +27,6 @@ This crate implements **worker management and communication channels** for Lua-b
 - `LuaWorker::new(state)` - Create a new worker
 - `worker.send(request)` - Send action request to worker
 - `worker.subscribe()` - Subscribe to server messages
-- `worker.add_state(data)` - Add app data to Lua state
 
 ---
 

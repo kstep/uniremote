@@ -51,10 +51,6 @@ impl LuaWorker {
         });
     }
 
-    pub fn add_state<T: Send + 'static>(&self, state: T) {
-        self.state.add_state(state);
-    }
-
     pub fn subscribe(&self) -> Receiver<ServerMessage> {
         self.outbox.clone()
     }
