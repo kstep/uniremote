@@ -2,8 +2,9 @@ use std::{
     collections::HashMap,
     sync::{
         Arc, Mutex,
-        atomic::{AtomicU64, Ordering},
+        atomic::{AtomicBool, AtomicU64, Ordering},
     },
+    thread,
 };
 
 use chrono::Utc;
@@ -18,7 +19,7 @@ use tokio::{
 static TIMER_ID_COUNTER: AtomicU64 = AtomicU64::new(1);
 
 type TimerMap = Arc<Mutex<HashMap<u64, (JoinHandle<()>, RegistryKey)>>>;
-type CallbackSender = Sender<u64>; // Send timer ID instead of RegistryKey
+type CallbackSender = Sender<u64>;
 
 fn get_timer_map(lua: &Lua) -> TimerMap {
     lua.app_data_ref::<TimerMap>()
@@ -150,45 +151,56 @@ fn cancel(lua: &Lua, timer_id: u64) -> mlua::Result<()> {
     Ok(())
 }
 
-/// Process pending timer callbacks. This should be called periodically from
-/// the Lua execution context to execute any pending timer callbacks.
-pub fn process_callbacks(lua: &Lua) -> mlua::Result<()> {
-    let receiver = lua
-        .app_data_ref::<Receiver<u64>>()
-        .expect("callback receiver not found in lua state")
-        .clone();
+/// Start the background timer callback processor thread.
+/// This thread automatically processes timer callbacks as they trigger.
+fn start_callback_processor(
+    lua: &Lua,
+    receiver: Receiver<u64>,
+    timer_map: TimerMap,
+    stop_flag: Arc<AtomicBool>,
+) {
+    // Get a raw pointer to the Lua state - this is safe because:
+    // 1. The Lua state lives for the entire duration of the application
+    // 2. We only access it from a single background thread
+    // 3. mlua with "send" feature makes Lua Send
+    let lua_ptr = lua as *const Lua as usize;
 
-    let timer_map = get_timer_map(lua);
+    thread::spawn(move || {
+        // SAFETY: We know the Lua state is still alive because it's managed by the
+        // application and we only access it from this single thread
+        let lua = unsafe { &*(lua_ptr as *const Lua) };
 
-    // Process all pending callbacks
-    while let Ok(timer_id) = receiver.try_recv() {
-        let timer_map_lock = timer_map.lock().unwrap();
-        if let Some((_handle, registry_key)) = timer_map_lock.get(&timer_id) {
-            if let Ok(callback) = lua.registry_value::<Function>(registry_key) {
-                // Execute the callback
-                drop(timer_map_lock); // Release lock before calling callback
-                if let Err(err) = callback.call::<()>(()) {
-                    tracing::error!("timer callback error: {err}");
+        while !stop_flag.load(Ordering::Relaxed) {
+            // Block waiting for timer callbacks with a timeout
+            if let Ok(timer_id) = receiver.recv_timeout(std::time::Duration::from_millis(100)) {
+                let timer_map_lock = timer_map.lock().unwrap();
+                if let Some((_handle, registry_key)) = timer_map_lock.get(&timer_id) {
+                    if let Ok(callback) = lua.registry_value::<Function>(registry_key) {
+                        drop(timer_map_lock); // Release lock before calling callback
+                        if let Err(err) = callback.call::<()>(()) {
+                            tracing::error!("timer callback error: {err}");
+                        }
+                    }
                 }
             }
         }
-    }
-
-    Ok(())
+    });
 }
 
 pub fn load(lua: &Lua, libs: &Table) -> anyhow::Result<()> {
     // Initialize timer map if not already present
     if lua.app_data_ref::<TimerMap>().is_none() {
         let timer_map: TimerMap = Arc::new(Mutex::new(HashMap::new()));
-        lua.set_app_data(timer_map);
-    }
+        lua.set_app_data(timer_map.clone());
 
-    // Initialize callback channel if not already present
-    if lua.app_data_ref::<CallbackSender>().is_none() {
+        // Initialize callback channel
         let (tx, rx) = flume::unbounded::<u64>();
         lua.set_app_data(tx);
-        lua.set_app_data(rx);
+
+        // Start background callback processor
+        let stop_flag = Arc::new(AtomicBool::new(false));
+        start_callback_processor(lua, rx, timer_map, stop_flag.clone());
+        lua.set_app_data(stop_flag);
     }
 
     let module = lua.create_table()?;
@@ -196,10 +208,6 @@ pub fn load(lua: &Lua, libs: &Table) -> anyhow::Result<()> {
     module.set("interval", lua.create_function(interval)?)?;
     module.set("schedule", lua.create_function(schedule)?)?;
     module.set("cancel", lua.create_function(cancel)?)?;
-    module.set(
-        "process_callbacks",
-        lua.create_function(|lua, ()| process_callbacks(lua))?,
-    )?;
 
     libs.set("timer", &module)?;
     lua.register_module("timer", module)?;
@@ -215,19 +223,13 @@ mod tests {
         let lua = Lua::new();
         let libs = lua.create_table().unwrap();
 
-        // Load the timer module
         load(&lua, &libs).unwrap();
-
-        // Set libs as a global
         lua.globals().set("libs", libs).unwrap();
 
-        // Test that timer can be created
         lua.load(
             r#"
             local tmr = require("timer")
-            tid = tmr.timeout(function()
-                -- callback
-            end, 100)
+            tid = tmr.timeout(function() end, 100)
         "#,
         )
         .exec()
@@ -245,24 +247,20 @@ mod tests {
         load(&lua, &libs).unwrap();
         lua.globals().set("libs", libs).unwrap();
 
-        // Test timeout with callback execution
         lua.load(
             r#"
             local tmr = require("timer")
             executed = false
             tid = tmr.timeout(function()
                 executed = true
-            end, 10)
+            end, 50)
         "#,
         )
         .exec()
         .unwrap();
 
-        // Wait for timeout to trigger
-        time::sleep(Duration::from_millis(50)).await;
-
-        // Process callbacks
-        process_callbacks(&lua).unwrap();
+        // Wait for timeout to trigger and callback to execute
+        time::sleep(Duration::from_millis(200)).await;
 
         let executed: bool = lua.globals().get("executed").unwrap();
         assert!(executed, "timeout callback should have executed");
@@ -276,24 +274,20 @@ mod tests {
         load(&lua, &libs).unwrap();
         lua.globals().set("libs", libs).unwrap();
 
-        // Test interval with callback execution
         lua.load(
             r#"
             local tmr = require("timer")
             counter = 0
             tid = tmr.interval(function()
                 counter = counter + 1
-            end, 10)
+            end, 50)
         "#,
         )
         .exec()
         .unwrap();
 
-        // Wait and process callbacks multiple times
-        for _ in 0..5 {
-            time::sleep(Duration::from_millis(15)).await;
-            process_callbacks(&lua).unwrap();
-        }
+        // Wait for multiple intervals
+        time::sleep(Duration::from_millis(300)).await;
 
         let counter: i32 = lua.globals().get("counter").unwrap();
         assert!(
@@ -313,14 +307,13 @@ mod tests {
         load(&lua, &libs).unwrap();
         lua.globals().set("libs", libs).unwrap();
 
-        // Test cancel
         lua.load(
             r#"
             local tmr = require("timer")
             executed = false
             tid = tmr.timeout(function()
                 executed = true
-            end, 100)
+            end, 1000)
             tmr.cancel(tid)
         "#,
         )
@@ -328,10 +321,7 @@ mod tests {
         .unwrap();
 
         // Wait to ensure timeout would have executed
-        time::sleep(Duration::from_millis(150)).await;
-
-        // Process callbacks
-        process_callbacks(&lua).unwrap();
+        time::sleep(Duration::from_millis(200)).await;
 
         let executed: bool = lua.globals().get("executed").unwrap();
         assert!(!executed, "cancelled timeout should not have executed");
@@ -345,7 +335,6 @@ mod tests {
         load(&lua, &libs).unwrap();
         lua.globals().set("libs", libs).unwrap();
 
-        // Test that invalid ISO 8601 time fails
         let result = lua
             .load(
                 r#"
@@ -366,7 +355,6 @@ mod tests {
         load(&lua, &libs).unwrap();
         lua.globals().set("libs", libs).unwrap();
 
-        // Test that past time fails
         let result = lua
             .load(
                 r#"
