@@ -2,14 +2,12 @@ use std::{
     collections::HashMap,
     sync::{
         Arc, Mutex,
-        atomic::{AtomicBool, AtomicU64, Ordering},
+        atomic::{AtomicU64, Ordering},
     },
-    thread,
 };
 
 use chrono::Utc;
-use flume::{Receiver, Sender};
-use mlua::{Function, Lua, RegistryKey, Table};
+use mlua::{Function, Lua, RegistryKey, Table, WeakLua};
 use tokio::{
     task::{JoinHandle, spawn},
     time,
@@ -20,26 +18,18 @@ static TIMER_ID_COUNTER: AtomicU64 = AtomicU64::new(1);
 
 struct TimerEntry {
     handle: JoinHandle<()>,
-    registry_key: RegistryKey,
-    is_repeating: bool,
 }
 
-/// Contains all timer-related state stored in the Lua state
-struct TimerState {
-    timer_map: Mutex<HashMap<u64, TimerEntry>>,
-    callback_sender: Sender<u64>,
-    callback_receiver: Receiver<u64>,
-    stop_flag: AtomicBool,
-}
+type TimerMap = Arc<Mutex<HashMap<u64, TimerEntry>>>;
 
-fn get_timer_state(lua: &Lua) -> Arc<TimerState> {
-    lua.app_data_ref::<Arc<TimerState>>()
-        .expect("timer state not found in lua state")
+fn get_timer_map(lua: &Lua) -> TimerMap {
+    lua.app_data_ref::<TimerMap>()
+        .expect("timer map not found in lua state")
         .clone()
 }
 
 fn timeout(lua: &Lua, (callback, time_ms): (Function, u64)) -> mlua::Result<u64> {
-    let state = get_timer_state(lua);
+    let timer_map = get_timer_map(lua);
 
     // Create a registry key to keep the function alive
     let registry_key: RegistryKey = lua.create_registry_value(callback)?;
@@ -47,30 +37,39 @@ fn timeout(lua: &Lua, (callback, time_ms): (Function, u64)) -> mlua::Result<u64>
     // Generate timer ID after validation
     let timer_id = TIMER_ID_COUNTER.fetch_add(1, Ordering::SeqCst);
 
-    // Spawn a task that waits for the specified duration then sends timer ID
-    let tid = timer_id;
-    let callback_sender = state.callback_sender.clone();
+    // Create a weak reference to Lua for safe cross-thread access
+    let weak_lua = lua.weak();
+
+    // Spawn an async task that will execute the callback after the delay
     let handle = spawn(async move {
         time::sleep(Duration::from_millis(time_ms)).await;
-        let _ = callback_sender.send(tid);
+
+        // Try to upgrade the weak reference
+        if let Some(lua) = weak_lua.try_upgrade() {
+            // Execute the callback
+            if let Ok(callback) = lua.registry_value::<Function>(&registry_key) {
+                if let Err(err) = callback.call::<()>(()) {
+                    tracing::error!("timer callback error: {err}");
+                }
+            }
+
+            // Clean up the registry key
+            let _ = lua.remove_registry_value(registry_key);
+        }
     });
 
-    // Store the timer entry (one-time timer)
-    state.timer_map.lock().unwrap().insert(
-        timer_id,
-        TimerEntry {
-            handle,
-            registry_key,
-            is_repeating: false,
-        },
-    );
+    // Store the handle for cancellation
+    timer_map
+        .lock()
+        .unwrap()
+        .insert(timer_id, TimerEntry { handle });
 
     tracing::info!("created timeout timer with id: {timer_id}, time: {time_ms}ms");
     Ok(timer_id)
 }
 
 fn interval(lua: &Lua, (callback, time_ms): (Function, u64)) -> mlua::Result<u64> {
-    let state = get_timer_state(lua);
+    let timer_map = get_timer_map(lua);
 
     // Create a registry key to keep the function alive
     let registry_key: RegistryKey = lua.create_registry_value(callback)?;
@@ -78,36 +77,50 @@ fn interval(lua: &Lua, (callback, time_ms): (Function, u64)) -> mlua::Result<u64
     // Generate timer ID after validation
     let timer_id = TIMER_ID_COUNTER.fetch_add(1, Ordering::SeqCst);
 
-    // Spawn an interval task that sends timer ID at each tick
-    let tid = timer_id;
-    let callback_sender = state.callback_sender.clone();
+    // Create a weak reference to Lua for safe cross-thread access
+    let weak_lua = lua.weak();
+
+    // Spawn an async task that will execute the callback repeatedly
     let handle = spawn(async move {
         let mut interval = time::interval(Duration::from_millis(time_ms));
 
         loop {
             interval.tick().await;
-            if callback_sender.send(tid).is_err() {
+
+            // Try to upgrade the weak reference
+            let Some(lua) = weak_lua.try_upgrade() else {
+                break;
+            };
+
+            // Execute the callback
+            if let Ok(callback) = lua.registry_value::<Function>(&registry_key) {
+                if let Err(err) = callback.call::<()>(()) {
+                    tracing::error!("timer callback error: {err}");
+                    break;
+                }
+            } else {
                 break;
             }
         }
+
+        // Clean up the registry key when the interval stops
+        if let Some(lua) = weak_lua.try_upgrade() {
+            let _ = lua.remove_registry_value(registry_key);
+        }
     });
 
-    // Store the timer entry (repeating timer)
-    state.timer_map.lock().unwrap().insert(
-        timer_id,
-        TimerEntry {
-            handle,
-            registry_key,
-            is_repeating: true,
-        },
-    );
+    // Store the handle for cancellation
+    timer_map
+        .lock()
+        .unwrap()
+        .insert(timer_id, TimerEntry { handle });
 
     tracing::info!("created interval timer with id: {timer_id}, time: {time_ms}ms");
     Ok(timer_id)
 }
 
 fn schedule(lua: &Lua, (callback, iso_time): (Function, String)) -> mlua::Result<u64> {
-    let state = get_timer_state(lua);
+    let timer_map = get_timer_map(lua);
 
     // Parse ISO 8601 timestamp
     let target_time = iso_time.parse::<chrono::DateTime<Utc>>().map_err(|error| {
@@ -131,35 +144,42 @@ fn schedule(lua: &Lua, (callback, iso_time): (Function, String)) -> mlua::Result
     // Generate timer ID after validation
     let timer_id = TIMER_ID_COUNTER.fetch_add(1, Ordering::SeqCst);
 
-    // Spawn a task that waits until the scheduled time then sends timer ID
-    let tid = timer_id;
-    let callback_sender = state.callback_sender.clone();
+    // Create a weak reference to Lua for safe cross-thread access
+    let weak_lua = lua.weak();
+
+    // Spawn an async task that will execute the callback at the scheduled time
     let handle = spawn(async move {
         time::sleep(Duration::from_millis(delay_ms)).await;
-        let _ = callback_sender.send(tid);
+
+        // Try to upgrade the weak reference
+        if let Some(lua) = weak_lua.try_upgrade() {
+            // Execute the callback
+            if let Ok(callback) = lua.registry_value::<Function>(&registry_key) {
+                if let Err(err) = callback.call::<()>(()) {
+                    tracing::error!("timer callback error: {err}");
+                }
+            }
+
+            // Clean up the registry key
+            let _ = lua.remove_registry_value(registry_key);
+        }
     });
 
-    // Store the timer entry (one-time timer)
-    state.timer_map.lock().unwrap().insert(
-        timer_id,
-        TimerEntry {
-            handle,
-            registry_key,
-            is_repeating: false,
-        },
-    );
+    // Store the handle for cancellation
+    timer_map
+        .lock()
+        .unwrap()
+        .insert(timer_id, TimerEntry { handle });
 
     tracing::info!("created schedule timer with id: {timer_id}, time: {iso_time}");
     Ok(timer_id)
 }
 
 fn cancel(lua: &Lua, timer_id: u64) -> mlua::Result<()> {
-    let state = get_timer_state(lua);
+    let timer_map = get_timer_map(lua);
 
-    if let Some(entry) = state.timer_map.lock().unwrap().remove(&timer_id) {
+    if let Some(entry) = timer_map.lock().unwrap().remove(&timer_id) {
         entry.handle.abort();
-        // Clean up the registry key
-        let _ = lua.remove_registry_value(entry.registry_key);
         tracing::info!("cancelled timer with id: {timer_id}");
     } else {
         tracing::warn!("attempted to cancel non-existent timer with id: {timer_id}");
@@ -168,64 +188,11 @@ fn cancel(lua: &Lua, timer_id: u64) -> mlua::Result<()> {
     Ok(())
 }
 
-/// Start the background timer callback processor thread.
-/// This thread automatically processes timer callbacks as they trigger.
-fn start_callback_processor(lua: &Lua, state: Arc<TimerState>) {
-    // Get a raw pointer to the Lua state - this is safe because:
-    // 1. The Lua state lives for the entire duration of the application
-    // 2. We only access it from a single background thread
-    // 3. mlua with "send" feature makes Lua Send
-    let lua_ptr = lua as *const Lua as usize;
-
-    thread::spawn(move || {
-        // SAFETY: We know the Lua state is still alive because it's managed by the
-        // application and we only access it from this single thread
-        let lua = unsafe { &*(lua_ptr as *const Lua) };
-
-        while !state.stop_flag.load(Ordering::Relaxed) {
-            // Block waiting for timer callbacks with a timeout
-            if let Ok(timer_id) = state
-                .callback_receiver
-                .recv_timeout(std::time::Duration::from_millis(100))
-            {
-                let mut timer_map_lock = state.timer_map.lock().unwrap();
-                if let Some(entry) = timer_map_lock.get(&timer_id) {
-                    let is_repeating = entry.is_repeating;
-                    if let Ok(callback) = lua.registry_value::<Function>(&entry.registry_key) {
-                        drop(timer_map_lock); // Release lock before calling callback
-                        if let Err(err) = callback.call::<()>(()) {
-                            tracing::error!("timer callback error: {err}");
-                        }
-
-                        // Remove one-time timers after execution
-                        if !is_repeating {
-                            timer_map_lock = state.timer_map.lock().unwrap();
-                            if let Some(entry) = timer_map_lock.remove(&timer_id) {
-                                let _ = lua.remove_registry_value(entry.registry_key);
-                            }
-                        }
-                    }
-                }
-            }
-        }
-    });
-}
-
 pub fn load(lua: &Lua, libs: &Table) -> anyhow::Result<()> {
-    // Initialize timer state if not already present
-    if lua.app_data_ref::<Arc<TimerState>>().is_none() {
-        let (tx, rx) = flume::unbounded::<u64>();
-        let state = Arc::new(TimerState {
-            timer_map: Mutex::new(HashMap::new()),
-            callback_sender: tx,
-            callback_receiver: rx,
-            stop_flag: AtomicBool::new(false),
-        });
-
-        lua.set_app_data(state.clone());
-
-        // Start background callback processor
-        start_callback_processor(lua, state);
+    // Initialize timer map if not already present
+    if lua.app_data_ref::<TimerMap>().is_none() {
+        let timer_map: TimerMap = Arc::new(Mutex::new(HashMap::new()));
+        lua.set_app_data(timer_map);
     }
 
     let module = lua.create_table()?;
