@@ -138,8 +138,10 @@ pub async fn get_remote_icon(
     let remote_with_channel = state.remotes.get(&remote_id).ok_or(StatusCode::NOT_FOUND)?;
     let remote = &remote_with_channel.remote;
 
-    // Use the resolved icon path from the Remote struct
-    let (file_path, mime_type) = match &remote.icon_path {
+    // Use the resolved icon path from RemoteMeta
+    let icon_path = remote.meta.resolve_icon_path(&remote.path);
+
+    let (file_path, mime_type) = match icon_path {
         Some(path) => {
             let mime = path
                 .extension()
@@ -154,7 +156,7 @@ pub async fn get_remote_icon(
                     _ => None,
                 })
                 .unwrap_or("application/octet-stream");
-            (path.clone(), mime)
+            (path, mime)
         }
         None => {
             // Fallback to default icon

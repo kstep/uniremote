@@ -16,7 +16,6 @@ pub struct Remote {
     pub path: PathBuf,
     pub meta: RemoteMeta,
     pub layout: Layout,
-    pub icon_path: Option<PathBuf>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
