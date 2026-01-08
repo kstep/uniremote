@@ -1,7 +1,7 @@
 use std::{
     collections::HashMap,
     sync::{
-        Arc, Mutex as StdMutex,
+        Arc, Mutex,
         atomic::{AtomicU64, Ordering},
     },
 };
@@ -10,12 +10,13 @@ use chrono::Utc;
 use mlua::{Function, Lua, RegistryKey, Table};
 use tokio::{
     task::{JoinHandle, spawn},
-    time::{Duration, interval as tokio_interval, sleep},
+    time,
+    time::Duration,
 };
 
 static TIMER_ID_COUNTER: AtomicU64 = AtomicU64::new(1);
 
-type TimerMap = Arc<StdMutex<HashMap<u64, JoinHandle<()>>>>;
+type TimerMap = Arc<Mutex<HashMap<u64, JoinHandle<()>>>>;
 
 fn get_timer_map(lua: &Lua) -> TimerMap {
     lua.app_data_ref::<TimerMap>()
@@ -27,19 +28,18 @@ fn timeout(lua: &Lua, (callback, time_ms): (Function, u64)) -> mlua::Result<u64>
     let timer_map = get_timer_map(lua);
 
     // Create a registry key to keep the function alive
-    let registry_key: RegistryKey = lua.create_registry_value(callback)?;
+    let _registry_key: RegistryKey = lua.create_registry_value(callback)?;
 
     // Generate timer ID after validation
     let timer_id = TIMER_ID_COUNTER.fetch_add(1, Ordering::SeqCst);
 
-    // We can't call Lua functions from another thread, so we just spawn a
-    // placeholder In a real implementation, this would need an event loop or
-    // callback mechanism
+    // Spawn a task that waits for the specified duration.
+    // Note: The callback cannot be executed from this async task because Lua
+    // functions are not thread-safe. In a real implementation, this would
+    // require an event loop or message passing system to execute callbacks in
+    // the Lua context.
     let handle = spawn(async move {
-        sleep(Duration::from_millis(time_ms)).await;
-        // Timer expired - in a real implementation, this would trigger a callback
-        // For now, we just drop the registry_key which will clean it up
-        drop(registry_key);
+        time::sleep(Duration::from_millis(time_ms)).await;
     });
 
     // Store the handle
@@ -53,23 +53,23 @@ fn interval(lua: &Lua, (callback, time_ms): (Function, u64)) -> mlua::Result<u64
     let timer_map = get_timer_map(lua);
 
     // Create a registry key to keep the function alive
-    let registry_key: RegistryKey = lua.create_registry_value(callback)?;
+    let _registry_key: RegistryKey = lua.create_registry_value(callback)?;
 
     // Generate timer ID after validation
     let timer_id = TIMER_ID_COUNTER.fetch_add(1, Ordering::SeqCst);
 
-    // Spawn interval task
+    // Spawn an interval task that ticks at the specified interval.
+    // Note: The callback cannot be executed from this async task because Lua
+    // functions are not thread-safe. In a real implementation, this would
+    // require an event loop or message passing system to execute callbacks in
+    // the Lua context.
     let handle = spawn(async move {
-        let mut interval = tokio_interval(Duration::from_millis(time_ms));
+        let mut interval = time::interval(Duration::from_millis(time_ms));
         interval.tick().await; // First tick completes immediately
 
         loop {
             interval.tick().await;
-            // Timer ticked - in a real implementation, this would trigger a
-            // callback
         }
-
-        drop(registry_key);
     });
 
     // Store the handle
@@ -99,16 +99,18 @@ fn schedule(lua: &Lua, (callback, iso_time): (Function, String)) -> mlua::Result
     let delay_ms = duration.num_milliseconds() as u64;
 
     // Create a registry key to keep the function alive
-    let registry_key: RegistryKey = lua.create_registry_value(callback)?;
+    let _registry_key: RegistryKey = lua.create_registry_value(callback)?;
 
     // Generate timer ID after validation
     let timer_id = TIMER_ID_COUNTER.fetch_add(1, Ordering::SeqCst);
 
-    // Spawn schedule task
+    // Spawn a task that waits until the scheduled time.
+    // Note: The callback cannot be executed from this async task because Lua
+    // functions are not thread-safe. In a real implementation, this would
+    // require an event loop or message passing system to execute callbacks in
+    // the Lua context.
     let handle = spawn(async move {
-        sleep(Duration::from_millis(delay_ms)).await;
-        // Timer expired - in a real implementation, this would trigger a callback
-        drop(registry_key);
+        time::sleep(Duration::from_millis(delay_ms)).await;
     });
 
     // Store the handle
@@ -134,7 +136,7 @@ fn cancel(lua: &Lua, timer_id: u64) -> mlua::Result<()> {
 pub fn load(lua: &Lua, libs: &Table) -> anyhow::Result<()> {
     // Initialize timer map if not already present
     if lua.app_data_ref::<TimerMap>().is_none() {
-        let timer_map: TimerMap = Arc::new(StdMutex::new(HashMap::new()));
+        let timer_map: TimerMap = Arc::new(Mutex::new(HashMap::new()));
         lua.set_app_data(timer_map);
     }
 
