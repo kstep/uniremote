@@ -26,10 +26,10 @@ struct TimerEntry {
 
 /// Contains all timer-related state stored in the Lua state
 struct TimerState {
-    timer_map: Arc<Mutex<HashMap<u64, TimerEntry>>>,
+    timer_map: Mutex<HashMap<u64, TimerEntry>>,
     callback_sender: Sender<u64>,
     callback_receiver: Receiver<u64>,
-    stop_flag: Arc<AtomicBool>,
+    stop_flag: AtomicBool,
 }
 
 fn get_timer_state(lua: &Lua) -> Arc<TimerState> {
@@ -216,10 +216,10 @@ pub fn load(lua: &Lua, libs: &Table) -> anyhow::Result<()> {
     if lua.app_data_ref::<Arc<TimerState>>().is_none() {
         let (tx, rx) = flume::unbounded::<u64>();
         let state = Arc::new(TimerState {
-            timer_map: Arc::new(Mutex::new(HashMap::new())),
+            timer_map: Mutex::new(HashMap::new()),
             callback_sender: tx,
             callback_receiver: rx,
-            stop_flag: Arc::new(AtomicBool::new(false)),
+            stop_flag: AtomicBool::new(false),
         });
 
         lua.set_app_data(state.clone());
