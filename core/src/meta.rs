@@ -76,18 +76,18 @@ impl RemoteMeta {
 
     /// Resolve the settings file path with platform-specific fallback logic.
     ///
-    /// If an explicit path is provided in metadata, only check that specific path.
-    /// Otherwise, try platform-specific file first (e.g., settings_linux.prop),
-    /// then fall back to base file (settings.prop).
+    /// If an explicit path is provided in metadata, only check that specific
+    /// path. Otherwise, try platform-specific file first (e.g.,
+    /// settings_linux.prop), then fall back to base file (settings.prop).
     pub fn resolve_settings_path(&self, base_dir: &Path) -> Option<PathBuf> {
         resolve_platform_file(base_dir, self.settings.as_ref(), "settings", "prop")
     }
 
     /// Resolve the icon file path with platform-specific fallback logic.
     ///
-    /// If an explicit path is provided in metadata, only check that specific path.
-    /// Otherwise, try platform-specific file first (e.g., icon_linux.png),
-    /// then fall back to base file (icon.png).
+    /// If an explicit path is provided in metadata, only check that specific
+    /// path. Otherwise, try platform-specific file first (e.g.,
+    /// icon_linux.png), then fall back to base file (icon.png).
     pub fn resolve_icon_path(&self, base_dir: &Path) -> Option<PathBuf> {
         resolve_platform_file(base_dir, self.icon.as_ref(), "icon", "png")
     }
