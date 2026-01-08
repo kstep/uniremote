@@ -138,12 +138,12 @@ pub async fn get_remote_icon(
     let remote_with_channel = state.remotes.get(&remote_id).ok_or(StatusCode::NOT_FOUND)?;
     let remote = &remote_with_channel.remote;
 
-    let icon_path = remote.path.join(remote.meta.icon_file());
+    // Use the resolved icon path from RemoteMeta
+    let icon_path = remote.meta.resolve_icon_path(&remote.path);
 
-    // Check if remote icon exists, fallback to default
-    let (file_path, mime_type) = match tokio::fs::metadata(&icon_path).await {
-        Ok(_) => {
-            let mime = icon_path
+    let (file_path, mime_type) = match icon_path {
+        Some(path) => {
+            let mime = path
                 .extension()
                 .and_then(|ext| ext.to_str())
                 .and_then(|ext| match ext.to_lowercase().as_str() {
@@ -156,9 +156,9 @@ pub async fn get_remote_icon(
                     _ => None,
                 })
                 .unwrap_or("application/octet-stream");
-            (icon_path, mime)
+            (path, mime)
         }
-        Err(_) => {
+        None => {
             // Fallback to default icon
             ("server/assets/gears.png".into(), "image/png")
         }

@@ -136,9 +136,7 @@ fn load_remote_script(path: &Path, meta: &RemoteMeta) -> Result<LuaState> {
 }
 
 fn load_remote_settings(path: &Path, meta: &RemoteMeta) -> Result<HashMap<String, String>> {
-    let settings_path = path.join(meta.settings_file());
-
-    if settings_path.is_file() {
+    if let Some(settings_path) = meta.resolve_settings_path(path) {
         serde_java_properties::from_reader(BufReader::new(
             File::open(settings_path).context("failed to open settings file")?,
         ))
