@@ -27,7 +27,10 @@ fn load_include(lua: &Lua, remote_dir: &Path) -> anyhow::Result<()> {
 
         // Read the file content
         let script_content = std::fs::read(&file_path).map_err(|error| {
-            mlua::Error::runtime(format!("failed to read file '{}': {error}", file_path.display()))
+            mlua::Error::runtime(format!(
+                "failed to read file '{}': {error}",
+                file_path.display()
+            ))
         })?;
 
         // Execute the script in the current lua context
@@ -50,9 +53,9 @@ fn load_include(lua: &Lua, remote_dir: &Path) -> anyhow::Result<()> {
 
 #[cfg(test)]
 mod tests {
+    use std::{fs, io::Write};
+
     use super::*;
-    use std::fs;
-    use std::io::Write;
 
     #[test]
     fn test_include_basic() {

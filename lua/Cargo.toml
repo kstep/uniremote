@@ -15,4 +15,5 @@ tokio.workspace = true
 flume.workspace = true
 tracing.workspace = true
 
+chrono = "0.4"
 tempfile = "3"
