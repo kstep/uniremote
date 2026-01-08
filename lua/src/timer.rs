@@ -31,11 +31,11 @@ fn get_timer_map(lua: &Lua) -> TimerMap {
 fn timeout(lua: &Lua, (callback, time_ms): (Function, u64)) -> mlua::Result<u64> {
     let timer_map = get_timer_map(lua);
 
-    // Create a registry key to keep the function alive
-    let registry_key: RegistryKey = lua.create_registry_value(callback)?;
-
     // Generate timer ID after validation
     let timer_id = TIMER_ID_COUNTER.fetch_add(1, Ordering::SeqCst);
+
+    // Create a registry key to keep the function alive
+    let registry_key: RegistryKey = lua.create_registry_value(callback)?;
 
     // Create a weak reference to Lua for safe cross-thread access
     let weak_lua = lua.weak();
@@ -71,11 +71,11 @@ fn timeout(lua: &Lua, (callback, time_ms): (Function, u64)) -> mlua::Result<u64>
 fn interval(lua: &Lua, (callback, time_ms): (Function, u64)) -> mlua::Result<u64> {
     let timer_map = get_timer_map(lua);
 
-    // Create a registry key to keep the function alive
-    let registry_key: RegistryKey = lua.create_registry_value(callback)?;
-
     // Generate timer ID after validation
     let timer_id = TIMER_ID_COUNTER.fetch_add(1, Ordering::SeqCst);
+
+    // Create a registry key to keep the function alive
+    let registry_key: RegistryKey = lua.create_registry_value(callback)?;
 
     // Create a weak reference to Lua for safe cross-thread access
     let weak_lua = lua.weak();
@@ -138,11 +138,11 @@ fn schedule(lua: &Lua, (callback, iso_time): (Function, String)) -> mlua::Result
 
     let delay_ms = duration.num_milliseconds() as u64;
 
-    // Create a registry key to keep the function alive
-    let registry_key: RegistryKey = lua.create_registry_value(callback)?;
-
     // Generate timer ID after validation
     let timer_id = TIMER_ID_COUNTER.fetch_add(1, Ordering::SeqCst);
+
+    // Create a registry key to keep the function alive
+    let registry_key: RegistryKey = lua.create_registry_value(callback)?;
 
     // Create a weak reference to Lua for safe cross-thread access
     let weak_lua = lua.weak();
