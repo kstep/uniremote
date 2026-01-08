@@ -65,7 +65,6 @@ fn interval(lua: &Lua, (callback, time_ms): (Function, u64)) -> mlua::Result<u64
     // the Lua context.
     let handle = spawn(async move {
         let mut interval = time::interval(Duration::from_millis(time_ms));
-        interval.tick().await; // First tick completes immediately
 
         loop {
             interval.tick().await;
