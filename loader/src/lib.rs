@@ -74,6 +74,7 @@ fn load_remote(
     let layout = load_remote_layout(path, &meta)?;
     let lua = load_remote_script(path, &meta)?;
     let settings = load_remote_settings(path, &meta)?;
+    let icon_path = resolve_platform_file(path, meta.icon.as_ref(), "icon", "png");
 
     lua.add_state(backend);
     if let Err(error) = lua.set_settings(settings) {
@@ -93,6 +94,7 @@ fn load_remote(
         path: path.to_path_buf(),
         meta,
         layout,
+        icon_path,
     };
 
     Ok(Some((remote_id, LoadedRemote::new(remote, lua))))
@@ -136,9 +138,9 @@ fn load_remote_script(path: &Path, meta: &RemoteMeta) -> Result<LuaState> {
 }
 
 fn load_remote_settings(path: &Path, meta: &RemoteMeta) -> Result<HashMap<String, String>> {
-    let settings_path = path.join(meta.settings_file());
-
-    if settings_path.is_file() {
+    if let Some(settings_path) =
+        resolve_platform_file(path, meta.settings.as_ref(), "settings", "prop")
+    {
         serde_java_properties::from_reader(BufReader::new(
             File::open(settings_path).context("failed to open settings file")?,
         ))
