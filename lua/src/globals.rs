@@ -3,7 +3,16 @@ use std::path::Path;
 use mlua::Lua;
 
 pub fn load(lua: &Lua, remote_dir: &Path) -> anyhow::Result<()> {
+    init_global_tables(lua)?;
     load_include(lua, remote_dir)?;
+    Ok(())
+}
+
+fn init_global_tables(lua: &Lua) -> anyhow::Result<()> {
+    let globals = lua.globals();
+    globals.set("settings", lua.create_table()?)?;
+    globals.set("events", lua.create_table()?)?;
+    globals.set("actions", lua.create_table()?)?;
     Ok(())
 }
 
@@ -18,12 +27,13 @@ fn load_include(lua: &Lua, remote_dir: &Path) -> anyhow::Result<()> {
 
         // Read the file content
         let script_content = std::fs::read(&file_path).map_err(|error| {
-            mlua::Error::runtime(format!("failed to read file '{file_path}': {error}", file_path = file_path.display()))
+            mlua::Error::runtime(format!("failed to read file '{}': {error}", file_path.display()))
         })?;
 
         // Execute the script in the current lua context
+        // Use the resolved file path for better debugging information
         lua.load(script_content)
-            .set_name(filename)
+            .set_name(file_path.display().to_string())
             .exec()
             .map_err(|error| {
                 mlua::Error::runtime(format!("failed to execute included file: {error}"))

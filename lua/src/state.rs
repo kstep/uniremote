@@ -25,7 +25,6 @@ impl LuaState {
             .parent()
             .ok_or_else(|| anyhow::anyhow!("script path has no parent directory"))?;
 
-        init_globals(&lua)?;
         crate::globals::load(&lua, remote_dir)?;
         load_modules(&lua)?;
 
@@ -130,14 +129,6 @@ impl LuaState {
 
         Ok(())
     }
-}
-
-fn init_globals(lua: &Lua) -> anyhow::Result<()> {
-    let globals = lua.globals();
-    globals.set("settings", lua.create_table()?)?;
-    globals.set("events", lua.create_table()?)?;
-    globals.set("actions", lua.create_table()?)?;
-    Ok(())
 }
 
 fn load_modules(lua: &Lua) -> anyhow::Result<()> {
