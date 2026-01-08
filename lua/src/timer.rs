@@ -7,7 +7,7 @@ use std::{
 };
 
 use chrono::Utc;
-use mlua::{Function, Lua, RegistryKey, Table, WeakLua};
+use mlua::{Function, Lua, RegistryKey, Table};
 use tokio::{
     task::{JoinHandle, spawn},
     time,
@@ -47,10 +47,10 @@ fn timeout(lua: &Lua, (callback, time_ms): (Function, u64)) -> mlua::Result<u64>
         // Try to upgrade the weak reference
         if let Some(lua) = weak_lua.try_upgrade() {
             // Execute the callback
-            if let Ok(callback) = lua.registry_value::<Function>(&registry_key) {
-                if let Err(err) = callback.call::<()>(()) {
-                    tracing::error!("timer callback error: {err}");
-                }
+            if let Ok(callback) = lua.registry_value::<Function>(&registry_key)
+                && let Err(err) = callback.call::<()>(())
+            {
+                tracing::error!("timer callback error: {err}");
             }
 
             // Clean up the registry key
@@ -93,12 +93,10 @@ fn interval(lua: &Lua, (callback, time_ms): (Function, u64)) -> mlua::Result<u64
             };
 
             // Execute the callback
-            if let Ok(callback) = lua.registry_value::<Function>(&registry_key) {
-                if let Err(err) = callback.call::<()>(()) {
-                    tracing::error!("timer callback error: {err}");
-                    break;
-                }
-            } else {
+            if let Ok(callback) = lua.registry_value::<Function>(&registry_key)
+                && let Err(err) = callback.call::<()>(())
+            {
+                tracing::error!("timer callback error: {err}");
                 break;
             }
         }
@@ -154,10 +152,10 @@ fn schedule(lua: &Lua, (callback, iso_time): (Function, String)) -> mlua::Result
         // Try to upgrade the weak reference
         if let Some(lua) = weak_lua.try_upgrade() {
             // Execute the callback
-            if let Ok(callback) = lua.registry_value::<Function>(&registry_key) {
-                if let Err(err) = callback.call::<()>(()) {
-                    tracing::error!("timer callback error: {err}");
-                }
+            if let Ok(callback) = lua.registry_value::<Function>(&registry_key)
+                && let Err(err) = callback.call::<()>(())
+            {
+                tracing::error!("timer callback error: {err}");
             }
 
             // Clean up the registry key

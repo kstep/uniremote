@@ -165,7 +165,7 @@ include("../common.lua")
 
         // Verify the file was loaded
         let loaded: bool = lua.globals().get("common_loaded").unwrap();
-        assert_eq!(loaded, true);
+        assert!(loaded);
     }
 
     #[test]
