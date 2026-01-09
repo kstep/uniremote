@@ -1,4 +1,5 @@
 use std::path::Path;
+use std::sync::atomic::{AtomicU64, Ordering};
 
 use mlua::{Error, Function, Lua, LuaSerdeExt, MaybeSend, MultiValue, Table, VmState};
 use mlua::HookTriggers;
@@ -164,11 +165,11 @@ fn apply_security_limits(lua: &Lua) {
     let result = lua.set_hook(
         HookTriggers::new().every_nth_instruction(INSTRUCTION_CHECK_INTERVAL),
         move |_lua, _debug| {
-            static COUNTER: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(0);
-            let count = COUNTER.fetch_add(INSTRUCTION_CHECK_INTERVAL as u64, std::sync::atomic::Ordering::Relaxed);
+            static COUNTER: AtomicU64 = AtomicU64::new(0);
+            let count = COUNTER.fetch_add(INSTRUCTION_CHECK_INTERVAL as u64, Ordering::Relaxed);
             
             if count >= instruction_limit {
-                COUNTER.store(0, std::sync::atomic::Ordering::Relaxed);
+                COUNTER.store(0, Ordering::Relaxed);
                 return Err(Error::runtime("instruction limit exceeded"));
             }
             Ok(VmState::Continue)
