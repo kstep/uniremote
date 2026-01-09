@@ -5,7 +5,7 @@ use qrcode::{QrCode, render::unicode};
 use crate::auth::AuthToken;
 
 pub fn print_qr_code(addr: SocketAddr, auth_token: &AuthToken) {
-    let url = format!("http://{addr}?token={auth_token}");
+    let url = format!("http://{addr}/login/{auth_token}");
 
     if addr.ip().is_loopback() {
         println!("Visit: {url}");

@@ -123,6 +123,11 @@ This guarantees:
   - Example: Use `serde_json::json!()`, `tokio::spawn()` directly without importing ✓
 - **For name conflicts**, import modules and qualify with module names
   - Example: If both `mlua::Result` and `anyhow::Result` are needed, import modules and use `mlua::Result` and `anyhow::Result`
+
+### Axum Route Parameters
+- **Always use `{param}` notation** for route parameters in Axum routes
+- Example: `.route("/login/{token}", get(handler))` ✓
+- Avoid: `.route("/login/:token", get(handler))` ✗ (This is Express.js/Sinatra style, not Axum)
   
 ### Rationale
 These conventions improve code readability and maintainability by making variable usage explicit and self-documenting, while reducing namespace clutter.

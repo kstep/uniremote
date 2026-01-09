@@ -3,7 +3,7 @@ use std::sync::Arc;
 use axum::{
     Json,
     body::Body,
-    extract::{Path, Query, State},
+    extract::{Path, State},
     http::StatusCode,
     response::{Html, IntoResponse, Redirect, Response},
 };
@@ -17,7 +17,6 @@ use mediatype::{
     MediaType,
     names::{HTML, TEXT},
 };
-use serde::Deserialize;
 use tokio::fs::File;
 use tokio_util::io::ReaderStream;
 use uniremote_core::{CallActionRequest, RemoteId};
@@ -29,33 +28,28 @@ const AUTH_COOKIE_NAME: &str = "uniremote_auth";
 
 const CONTENT_TYPE_HTML: MediaType = MediaType::from_parts(TEXT, HTML, None, &[]);
 
-#[derive(Deserialize)]
-pub struct TokenQuery {
-    token: Option<String>,
+pub async fn login(
+    Path(token): Path<String>,
+    State(state): State<Arc<AppState>>,
+    jar: CookieJar,
+) -> Result<(CookieJar, Redirect), StatusCode> {
+    // Validate the token
+    state.auth_token.validate(&token)?;
+    
+    // Set HTTP-only cookie with auth token
+    let cookie = Cookie::build((AUTH_COOKIE_NAME, token))
+        .http_only(true)
+        .path("/")
+        .same_site(SameSite::Strict)
+        .build();
+    
+    Ok((jar.add(cookie), Redirect::to("/")))
 }
 
 pub async fn list_remotes(
     State(state): State<Arc<AppState>>,
     accept: Option<TypedHeader<Accept>>,
-    Query(query): Query<TokenQuery>,
-    jar: CookieJar,
 ) -> Result<Response, StatusCode> {
-    // If token is provided in query string, set cookie and redirect
-    if let Some(token) = query.token {
-        // Validate the token
-        state.auth_token.validate(&token)?;
-        
-        // Set HTTP-only cookie with auth token
-        let cookie = Cookie::build((AUTH_COOKIE_NAME, token))
-            .http_only(true)
-            .path("/")
-            .same_site(SameSite::Strict)
-            .build();
-        
-        let jar = jar.add(cookie);
-        return Ok((jar, Redirect::to("/")).into_response());
-    }
-
     let wants_html = accept.as_ref().is_some_and(|TypedHeader(accept)| {
         accept
             .media_types()
