@@ -8,10 +8,7 @@ use axum::{
     http::StatusCode,
     response::Response,
 };
-use axum_extra::{
-    TypedHeader,
-    headers::Cookie as HeaderCookie,
-};
+use axum_extra::extract::cookie::CookieJar;
 use flume::Receiver;
 use futures_util::{
     sink::SinkExt,
@@ -27,12 +24,13 @@ const AUTH_COOKIE_NAME: &str = "uniremote_auth";
 pub async fn websocket_handler(
     Path(remote_id): Path<RemoteId>,
     State(state): State<Arc<AppState>>,
-    TypedHeader(cookies): TypedHeader<HeaderCookie>,
+    jar: CookieJar,
     ws: WebSocketUpgrade,
 ) -> Result<Response, StatusCode> {
     // Extract token from cookie
-    let token = cookies
+    let token = jar
         .get(AUTH_COOKIE_NAME)
+        .map(|cookie| cookie.value())
         .ok_or(StatusCode::UNAUTHORIZED)?;
 
     state.auth_token.validate(token)?;
