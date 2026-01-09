@@ -17,7 +17,7 @@ fn default_remotes_dir() -> PathBuf {
         .get_config_home()
         .expect("missing config directory")
         .join("remotes");
-    
+
     // Try to canonicalize the default directory, but it's okay if it doesn't exist
     // yet since it will be created on first use. For user-provided paths via CLI,
     // canonicalization is enforced by value_parser and will fail if the path is
