@@ -44,6 +44,18 @@ pub struct Args {
     /// (~/.config/uniremote/remotes)
     #[arg(long, default_value_os_t = default_remotes_dir())]
     pub remotes: PathBuf,
+
+    /// Maximum memory (in MB) that Lua scripts can use
+    ///
+    /// Default: 10 MB
+    #[arg(long, default_value_t = 10)]
+    pub lua_max_mem: usize,
+
+    /// Maximum number of instructions Lua scripts can execute
+    ///
+    /// Default: 1,000,000 instructions
+    #[arg(long, default_value_t = 1_000_000)]
+    pub lua_max_instructions: u64,
 }
 
 #[derive(Debug, Clone, Copy)]

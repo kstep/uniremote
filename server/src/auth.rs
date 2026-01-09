@@ -1,9 +1,10 @@
 use core::fmt;
 
 use axum::http::StatusCode;
+use subtle::ConstantTimeEq;
 
 /// Authentication token generated on server start
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug)]
 pub struct AuthToken(String);
 
 impl AuthToken {
@@ -17,9 +18,12 @@ impl AuthToken {
         Self(token)
     }
 
-    /// Validate a token string against this token
+    /// Validate a token string against this token using constant-time comparison
     pub fn validate(&self, token: &str) -> Result<(), StatusCode> {
-        if token == self.0 {
+        // Use constant-time comparison to prevent timing attacks
+        let is_valid = self.0.as_bytes().ct_eq(token.as_bytes()).into();
+        
+        if is_valid {
             Ok(())
         } else {
             tracing::warn!("unauthorized access attempt with invalid token");
@@ -27,6 +31,15 @@ impl AuthToken {
         }
     }
 }
+
+impl PartialEq for AuthToken {
+    fn eq(&self, other: &Self) -> bool {
+        // Use constant-time comparison for PartialEq as well
+        self.0.as_bytes().ct_eq(other.0.as_bytes()).into()
+    }
+}
+
+impl Eq for AuthToken {}
 
 impl fmt::Display for AuthToken {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {

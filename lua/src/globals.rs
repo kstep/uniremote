@@ -19,24 +19,45 @@ fn init_global_tables(lua: &Lua) -> anyhow::Result<()> {
 fn load_include(lua: &Lua, remote_dir: &Path) -> anyhow::Result<()> {
     // Clone the remote directory path to move into the closure
     let remote_dir = remote_dir.to_path_buf();
+    
+    // Canonicalize the remote directory to get absolute path for security checks
+    let remote_dir_canonical = remote_dir.canonicalize()
+        .unwrap_or_else(|_| remote_dir.clone());
 
     // Create the include function as a closure that captures remote_dir
     let include_fn = lua.create_function(move |lua, filename: String| {
         // Resolve the path relative to the remote directory
         let file_path = remote_dir.join(&filename);
+        
+        // Canonicalize the resolved path and check it's within the remote directory
+        // This prevents directory traversal attacks using .. or symlinks
+        let file_path_canonical = file_path.canonicalize()
+            .map_err(|error| {
+                Error::runtime(format!(
+                    "failed to resolve file path '{}': {error}",
+                    file_path.display()
+                ))
+            })?;
+        
+        if !file_path_canonical.starts_with(&remote_dir_canonical) {
+            return Err(Error::runtime(format!(
+                "access denied: file '{}' is outside the remote directory",
+                filename
+            )));
+        }
 
         // Read the file content
-        let script_content = std::fs::read(&file_path).map_err(|error| {
+        let script_content = std::fs::read(&file_path_canonical).map_err(|error| {
             Error::runtime(format!(
                 "failed to read file '{}': {error}",
-                file_path.display()
+                file_path_canonical.display()
             ))
         })?;
 
         // Execute the script in the current lua context
         // Use the resolved file path for better debugging information
         lua.load(script_content)
-            .set_name(file_path.display().to_string())
+            .set_name(file_path_canonical.display().to_string())
             .exec()
             .map_err(|error| {
                 Error::runtime(format!("failed to execute included file: {error}"))
@@ -134,8 +155,8 @@ include("subdir/helper.lua")
     }
 
     #[test]
-    fn test_include_parent_directory() {
-        // Create a temporary directory structure
+    fn test_include_parent_directory_blocked() {
+        // Test that accessing parent directory is blocked for security
         let temp_dir = tempfile::tempdir().unwrap();
         let temp_path = temp_dir.path();
 
@@ -154,18 +175,19 @@ include("subdir/helper.lua")
         // Load the globals pointing to the remote directory
         load(&lua, &remote_dir).unwrap();
 
-        // Test including a file from parent directory
-        lua.load(
-            r#"
+        // Test including a file from parent directory - should be blocked
+        let result = lua
+            .load(
+                r#"
 include("../common.lua")
         "#,
-        )
-        .exec()
-        .unwrap();
+            )
+            .exec();
 
-        // Verify the file was loaded
-        let loaded: bool = lua.globals().get("common_loaded").unwrap();
-        assert!(loaded);
+        // Should error with access denied
+        assert!(result.is_err());
+        let error = result.unwrap_err();
+        assert!(error.to_string().contains("access denied"));
     }
 
     #[test]
@@ -185,10 +207,15 @@ include("nonexistent.lua")
             )
             .exec();
 
-        // Should error
+        // Should error - either "failed to resolve file path" or "failed to read file"
         assert!(result.is_err());
         let error = result.unwrap_err();
-        assert!(error.to_string().contains("failed to read file"));
+        let error_str = error.to_string();
+        assert!(
+            error_str.contains("failed to resolve file path") || error_str.contains("failed to read file"),
+            "Unexpected error message: {}",
+            error_str
+        );
     }
 
     #[test]

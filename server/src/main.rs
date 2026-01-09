@@ -1,4 +1,5 @@
 use clap::Parser;
+use uniremote_loader::LuaLimits;
 use uniremote_server::args::Args;
 
 #[tokio::main]
@@ -8,7 +9,12 @@ async fn main() -> anyhow::Result<()> {
 
     let args = Args::parse();
 
-    let remotes = uniremote_loader::load_remotes(args.remotes)?;
+    let lua_limits = LuaLimits {
+        memory_mb: args.lua_max_mem,
+        max_instructions: args.lua_max_instructions,
+    };
+
+    let remotes = uniremote_loader::load_remotes(args.remotes, lua_limits)?;
 
     tracing::info!("loaded {} remotes", remotes.len());
 

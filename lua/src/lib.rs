@@ -1,6 +1,6 @@
 use std::sync::Arc;
 
-pub use state::LuaState;
+pub use state::{LuaLimits, LuaState};
 use uniremote_input::UInputBackend;
 
 pub mod globals;

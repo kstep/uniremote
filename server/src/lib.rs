@@ -3,13 +3,14 @@ use std::{collections::HashMap, sync::Arc};
 use anyhow::Context;
 use axum::{
     Router,
-    http::{Method, header},
+    http::{Method, header, HeaderValue},
     routing::{get, post},
 };
 use tower_http::{
     cors::{AllowOrigin, CorsLayer},
     services::ServeDir,
     trace::TraceLayer,
+    set_header::SetResponseHeaderLayer,
 };
 use uniremote_core::RemoteId;
 use uniremote_loader::LoadedRemote;
@@ -57,6 +58,11 @@ pub async fn run(
         .allow_methods([Method::GET, Method::POST])
         .allow_headers([header::CONTENT_TYPE, header::AUTHORIZATION, header::ACCEPT]);
 
+    // Content Security Policy headers for XSS protection
+    let csp_header = HeaderValue::from_static(
+        "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self'; connect-src 'self'; font-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'"
+    );
+
     let app = Router::new()
         .route("/", get(handlers::list_remotes))
         .route("/r/{id}", get(handlers::get_remote))
@@ -64,6 +70,10 @@ pub async fn run(
         .route("/api/r/{id}/call", post(handlers::call_remote_action))
         .route("/api/r/{id}/ws", get(websocket::websocket_handler))
         .nest_service("/assets", ServeDir::new(ASSETS_DIR))
+        .layer(SetResponseHeaderLayer::overriding(
+            header::CONTENT_SECURITY_POLICY,
+            csp_header,
+        ))
         .layer(TraceLayer::new_for_http())
         .layer(cors)
         .with_state(state);

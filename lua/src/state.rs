@@ -5,10 +5,28 @@ use mlua::{Error, Function, Lua, LuaSerdeExt, MaybeSend, MultiValue, Table, VmSt
 use mlua::HookTriggers;
 use uniremote_core::ActionId;
 
-// Lua security limits
-const LUA_MEMORY_LIMIT_BYTES: usize = 10 * 1024 * 1024; // 10 MB
-const LUA_INSTRUCTION_LIMIT: u64 = 1_000_000; // 1 million instructions
+// Default Lua security limits
+const DEFAULT_LUA_MEMORY_LIMIT_MB: usize = 10; // 10 MB
+const DEFAULT_LUA_INSTRUCTION_LIMIT: u64 = 1_000_000; // 1 million instructions
 const INSTRUCTION_CHECK_INTERVAL: u32 = 10_000; // Check every 10k instructions
+
+/// Configuration for Lua VM security limits
+#[derive(Clone, Copy, Debug)]
+pub struct LuaLimits {
+    /// Memory limit in megabytes
+    pub memory_mb: usize,
+    /// Maximum number of instructions
+    pub max_instructions: u64,
+}
+
+impl Default for LuaLimits {
+    fn default() -> Self {
+        Self {
+            memory_mb: DEFAULT_LUA_MEMORY_LIMIT_MB,
+            max_instructions: DEFAULT_LUA_INSTRUCTION_LIMIT,
+        }
+    }
+}
 
 pub struct LuaState {
     lua: Lua,
@@ -16,8 +34,12 @@ pub struct LuaState {
 
 impl LuaState {
     pub fn empty() -> Self {
+        Self::empty_with_limits(LuaLimits::default())
+    }
+
+    pub fn empty_with_limits(limits: LuaLimits) -> Self {
         let lua = Lua::new();
-        apply_security_limits(&lua);
+        apply_security_limits(&lua, limits);
         LuaState { lua }
     }
 
@@ -26,8 +48,12 @@ impl LuaState {
     }
 
     pub fn new(script: &Path) -> anyhow::Result<Self> {
+        Self::new_with_limits(script, LuaLimits::default())
+    }
+
+    pub fn new_with_limits(script: &Path, limits: LuaLimits) -> anyhow::Result<Self> {
         let lua = Lua::new();
-        apply_security_limits(&lua);
+        apply_security_limits(&lua, limits);
 
         // Get the directory containing the script (remote directory)
         let remote_dir = script
@@ -152,16 +178,18 @@ fn load_modules(lua: &Lua) -> anyhow::Result<()> {
 }
 
 /// Apply security limits to Lua VM to prevent resource exhaustion attacks
-fn apply_security_limits(lua: &Lua) {
-    // Set memory limit to 10 MB
-    if let Err(error) = lua.set_memory_limit(LUA_MEMORY_LIMIT_BYTES) {
+fn apply_security_limits(lua: &Lua, limits: LuaLimits) {
+    let memory_limit_bytes = limits.memory_mb * 1024 * 1024;
+    
+    // Set memory limit
+    if let Err(error) = lua.set_memory_limit(memory_limit_bytes) {
         tracing::warn!("failed to set Lua memory limit: {error}");
     } else {
-        tracing::info!("Lua memory limit set to {} bytes", LUA_MEMORY_LIMIT_BYTES);
+        tracing::info!("Lua memory limit set to {} MB ({} bytes)", limits.memory_mb, memory_limit_bytes);
     }
 
-    // Set instruction count hook to limit execution to 1M instructions
-    let instruction_limit = LUA_INSTRUCTION_LIMIT;
+    // Set instruction count hook to limit execution
+    let instruction_limit = limits.max_instructions;
     let result = lua.set_hook(
         HookTriggers::new().every_nth_instruction(INSTRUCTION_CHECK_INTERVAL),
         move |_lua, _debug| {
@@ -179,6 +207,6 @@ fn apply_security_limits(lua: &Lua) {
     if let Err(error) = result {
         tracing::warn!("failed to set Lua instruction limit hook: {error}");
     } else {
-        tracing::info!("Lua instruction limit set to {} instructions", LUA_INSTRUCTION_LIMIT);
+        tracing::info!("Lua instruction limit set to {} instructions", limits.max_instructions);
     }
 }
