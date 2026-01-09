@@ -10,7 +10,6 @@ use axum::{
 use axum_extra::{
     TypedHeader,
     extract::cookie::{Cookie, CookieJar, SameSite},
-    headers::{Authorization, authorization::Bearer},
 };
 use headers_accept::Accept;
 use mediatype::{
@@ -134,17 +133,15 @@ pub async fn call_remote_action(
     Path(remote_id): Path<RemoteId>,
     State(state): State<Arc<AppState>>,
     jar: CookieJar,
-    auth_header: Option<TypedHeader<Authorization<Bearer>>>,
     Json(request): Json<CallActionRequest>,
 ) -> Result<Json<serde_json::Value>, StatusCode> {
-    // Try to get token from cookie first, then fall back to Authorization header
+    // Extract token from cookie
     let token = jar
         .get(AUTH_COOKIE_NAME)
-        .map(|cookie| cookie.value().to_string())
-        .or_else(|| auth_header.as_ref().map(|TypedHeader(auth)| auth.token().to_string()))
+        .map(|cookie| cookie.value())
         .ok_or(StatusCode::UNAUTHORIZED)?;
 
-    state.auth_token.validate(&token)?;
+    state.auth_token.validate(token)?;
 
     let remote = state.remotes.get(&remote_id).ok_or(StatusCode::NOT_FOUND)?;
 
