@@ -77,7 +77,7 @@ fn load_remote(
     tracing::info!("loading remote {remote_id} from {}", path.display());
 
     let layout = load_remote_layout(path, &meta)?;
-    let lua = load_remote_script(path, &meta, lua_limits)?;
+    let lua = load_remote_script(base_path, path, &meta, lua_limits)?;
     let settings = load_remote_settings(path, &meta)?;
 
     lua.add_state(backend);
@@ -132,11 +132,16 @@ fn load_remote_layout(path: &Path, meta: &RemoteMeta) -> Result<Layout> {
     }
 }
 
-fn load_remote_script(path: &Path, meta: &RemoteMeta, lua_limits: LuaLimits) -> Result<LuaState> {
+fn load_remote_script(
+    base_path: &Path,
+    path: &Path,
+    meta: &RemoteMeta,
+    lua_limits: LuaLimits,
+) -> Result<LuaState> {
     let lua = if let Some(script_path) =
         resolve_platform_file(path, meta.remote.as_ref(), "remote", "lua")
     {
-        LuaState::new(&script_path, lua_limits)?
+        LuaState::new(&script_path, base_path, lua_limits)?
     } else {
         LuaState::empty(lua_limits)
     };

@@ -2,9 +2,9 @@ use std::path::Path;
 
 use mlua::{Error, Lua};
 
-pub fn load(lua: &Lua, remote_dir: &Path) -> anyhow::Result<()> {
+pub fn load(lua: &Lua, remote_dir: &Path, remotes_dir: &Path) -> anyhow::Result<()> {
     init_global_tables(lua)?;
-    load_include(lua, remote_dir)?;
+    load_include(lua, remote_dir, remotes_dir)?;
     Ok(())
 }
 
@@ -16,22 +16,20 @@ fn init_global_tables(lua: &Lua) -> anyhow::Result<()> {
     Ok(())
 }
 
-fn load_include(lua: &Lua, remote_dir: &Path) -> anyhow::Result<()> {
-    // Clone the remote directory path to move into the closure
+fn load_include(lua: &Lua, remote_dir: &Path, remotes_dir: &Path) -> anyhow::Result<()> {
+    // Clone paths to move into the closure
     let remote_dir = remote_dir.to_path_buf();
+    let remotes_dir = remotes_dir.to_path_buf();
 
-    // Canonicalize the remote directory to get absolute path for security checks
-    let remote_dir_canonical = remote_dir
-        .canonicalize()
-        .unwrap_or_else(|_| remote_dir.clone());
-
-    // Create the include function as a closure that captures remote_dir
+    // Create the include function as a closure that captures remote_dir and
+    // remotes_dir
     let include_fn = lua.create_function(move |lua, filename: String| {
         // Resolve the path relative to the remote directory
         let file_path = remote_dir.join(&filename);
 
-        // Canonicalize the resolved path and check it's within the remote directory
-        // This prevents directory traversal attacks using .. or symlinks
+        // Canonicalize the resolved path and check it's within the global remotes
+        // directory This prevents directory traversal attacks using .. or symlinks,
+        // and also prevents one remote from accessing another remote's files
         let file_path_canonical = file_path.canonicalize().map_err(|error| {
             Error::runtime(format!(
                 "failed to resolve file path '{}': {error}",
@@ -39,10 +37,9 @@ fn load_include(lua: &Lua, remote_dir: &Path) -> anyhow::Result<()> {
             ))
         })?;
 
-        if !file_path_canonical.starts_with(&remote_dir_canonical) {
+        if !file_path_canonical.starts_with(&remotes_dir) {
             return Err(Error::runtime(format!(
-                "access denied: file '{}' is outside the remote directory",
-                filename
+                "access denied: file '{filename}' is outside the global remotes directory"
             )));
         }
 
@@ -99,7 +96,7 @@ end
         let lua = Lua::new();
 
         // Load the globals
-        load(&lua, temp_path).unwrap();
+        load(&lua, temp_path, temp_path).unwrap();
 
         // Test including the common.lua file
         lua.load(
@@ -136,7 +133,7 @@ result = func_from_common("test")
         let lua = Lua::new();
 
         // Load the globals
-        load(&lua, temp_path).unwrap();
+        load(&lua, temp_path, temp_path).unwrap();
 
         // Test including a file from a subdirectory
         lua.load(
@@ -158,26 +155,32 @@ include("subdir/helper.lua")
         let temp_dir = tempfile::tempdir().unwrap();
         let temp_path = temp_dir.path();
 
-        // Create a common.lua at the root
+        // Create a remotes directory
+        let remotes_dir = temp_path.join("remotes");
+        fs::create_dir(&remotes_dir).unwrap();
+
+        // Create a common.lua at the temp root (outside remotes)
         let common_path = temp_path.join("common.lua");
         let mut common_file = fs::File::create(&common_path).unwrap();
         writeln!(common_file, "common_loaded = true").unwrap();
 
-        // Create a subdirectory for the "remote"
-        let remote_dir = temp_path.join("my_remote");
+        // Create a subdirectory for the "remote" inside remotes
+        let remote_dir = remotes_dir.join("my_remote");
         fs::create_dir(&remote_dir).unwrap();
 
         // Create a main lua context as if we're in the subdirectory
         let lua = Lua::new();
 
         // Load the globals pointing to the remote directory
-        load(&lua, &remote_dir).unwrap();
+        // remotes_dir is the boundary - anything outside should be blocked
+        load(&lua, &remote_dir, &remotes_dir).unwrap();
 
-        // Test including a file from parent directory - should be blocked
+        // Test including a file from parent directory (outside remotes_dir) - should
+        // be blocked
         let result = lua
             .load(
                 r#"
-include("../common.lua")
+include("../../common.lua")
         "#,
             )
             .exec();
@@ -194,7 +197,7 @@ include("../common.lua")
         let temp_path = temp_dir.path();
 
         let lua = Lua::new();
-        load(&lua, temp_path).unwrap();
+        load(&lua, temp_path, temp_path).unwrap();
 
         // Try to include a nonexistent file
         let result = lua
@@ -241,7 +244,7 @@ end
         lua.globals().set("actions", actions).unwrap();
 
         // Load the globals
-        load(&lua, temp_path).unwrap();
+        load(&lua, temp_path, temp_path).unwrap();
 
         // Test the example usage
         lua.load(

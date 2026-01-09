@@ -49,7 +49,7 @@ impl LuaState {
         self.lua.set_app_data(state);
     }
 
-    pub fn new(script: &Path, limits: LuaLimits) -> anyhow::Result<Self> {
+    pub fn new(script: &Path, remotes_dir: &Path, limits: LuaLimits) -> anyhow::Result<Self> {
         let lua = Lua::new();
         apply_security_limits(&lua, limits);
 
@@ -58,7 +58,7 @@ impl LuaState {
             .parent()
             .ok_or_else(|| anyhow::anyhow!("script path has no parent directory"))?;
 
-        crate::globals::load(&lua, remote_dir)?;
+        crate::globals::load(&lua, remote_dir, remotes_dir)?;
         load_modules(&lua)?;
 
         let script_content = std::fs::read(script)?;

@@ -2,7 +2,7 @@ use std::{
     fmt,
     net::{IpAddr, Ipv4Addr, SocketAddr},
     ops::Range,
-    path::PathBuf,
+    path::{Path, PathBuf},
     str::FromStr,
 };
 
@@ -13,10 +13,19 @@ use tokio::net::TcpListener;
 const DEFAULT_PORT_RANGE: Range<u16> = 8000..8101;
 
 fn default_remotes_dir() -> PathBuf {
-    xdg::BaseDirectories::with_prefix("uniremote")
+    let dir = xdg::BaseDirectories::with_prefix("uniremote")
         .get_config_home()
         .expect("missing config directory")
-        .join("remotes")
+        .join("remotes");
+    
+    // Canonicalize the default directory once
+    dir.canonicalize().unwrap_or(dir)
+}
+
+fn canonicalize_path(path: &str) -> Result<PathBuf, String> {
+    Path::new(path)
+        .canonicalize()
+        .map_err(|error| format!("failed to canonicalize path: {error}"))
 }
 
 #[derive(Parser)]
@@ -42,7 +51,8 @@ pub struct Args {
     ///
     /// If not specified, uses XDG config directory
     /// (~/.config/uniremote/remotes)
-    #[arg(long, default_value_os_t = default_remotes_dir())]
+    /// The path is automatically canonicalized for security.
+    #[arg(long, default_value_os_t = default_remotes_dir(), value_parser = canonicalize_path)]
     pub remotes: PathBuf,
 
     /// Maximum memory (in MB) that Lua scripts can use
