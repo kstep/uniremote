@@ -73,9 +73,21 @@ impl LuaState {
         Ok(actions)
     }
 
+    fn events(&self) -> anyhow::Result<Table> {
+        let globals = self.lua.globals();
+        let events: Table = globals.get("events")?;
+        Ok(events)
+    }
+
     fn action(&self, name: &ActionId) -> anyhow::Result<Function> {
         let actions = self.actions()?;
         let function: Function = actions.get(&**name)?;
+        Ok(function)
+    }
+
+    fn event(&self, event: &str) -> anyhow::Result<Function> {
+        let events = self.events()?;
+        let function: Function = events.get(event)?;
         Ok(function)
     }
 
@@ -97,18 +109,14 @@ impl LuaState {
     }
 
     pub fn detect(&self) -> anyhow::Result<bool> {
-        let globals = self.lua.globals();
-        let events: Table = globals.get("events")?;
-        if let Ok(event_fn) = events.get::<Function>("detect") {
+        if let Ok(event_fn) = self.event("detect") {
             return Ok(event_fn.call::<bool>(())?);
         }
         Ok(true)
     }
 
     pub fn trigger_event(&self, event_name: &str) -> anyhow::Result<()> {
-        let globals = self.lua.globals();
-        let events: Table = globals.get("events")?;
-        if let Ok(event_fn) = events.get::<Function>(event_name) {
+        if let Ok(event_fn) = self.event(event_name) {
             event_fn.call::<()>(())?;
         }
         Ok(())
@@ -123,8 +131,8 @@ impl LuaState {
         INSTRUCTION_COUNTER.store(0, Ordering::Relaxed);
 
         let action_fn = self.action(&action_id)?;
-        let preaction = self.lua.globals().get::<Function>("preaction").ok();
-        let postaction = self.lua.globals().get::<Function>("postaction").ok();
+        let preaction = self.event("preaction").ok();
+        let postaction = self.event("postaction").ok();
 
         if let Some(args_map) = args {
             let args = MultiValue::from(
@@ -176,6 +184,7 @@ fn load_modules(lua: &Lua) -> anyhow::Result<()> {
     crate::server::load(lua, &libs)?;
     crate::timer::load(lua, &libs)?;
     lua.globals().set("libs", libs)?;
+    crate::extra::load(lua)?;
     Ok(())
 }
 

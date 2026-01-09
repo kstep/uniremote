@@ -265,4 +265,54 @@ result = actions.foo()
         let result: String = lua.globals().get("result").unwrap();
         assert_eq!(result, "action: foo");
     }
+
+    #[test]
+    fn test_math_round_to_integer() {
+        let temp_dir = tempfile::tempdir().unwrap();
+        let temp_path = temp_dir.path();
+
+        let lua = Lua::new();
+        load(&lua, temp_path, temp_path).unwrap();
+        crate::extra::load(&lua).unwrap();
+
+        // Test rounding to nearest integer
+        lua.load("result1 = math.round(10.8)").exec().unwrap();
+        lua.load("result2 = math.round(10.2)").exec().unwrap();
+        lua.load("result3 = math.round(10.5)").exec().unwrap();
+        lua.load("result4 = math.round(-10.8)").exec().unwrap();
+
+        assert_eq!(lua.globals().get::<f64>("result1").unwrap(), 11.0);
+        assert_eq!(lua.globals().get::<f64>("result2").unwrap(), 10.0);
+        assert_eq!(lua.globals().get::<f64>("result3").unwrap(), 11.0);
+        assert_eq!(lua.globals().get::<f64>("result4").unwrap(), -11.0);
+    }
+
+    #[test]
+    fn test_math_round_with_precision() {
+        let temp_dir = tempfile::tempdir().unwrap();
+        let temp_path = temp_dir.path();
+
+        let lua = Lua::new();
+        load(&lua, temp_path, temp_path).unwrap();
+        crate::extra::load(&lua).unwrap();
+
+        // Test rounding with precision
+        lua.load("result1 = math.round(10.006, 0.01)")
+            .exec()
+            .unwrap();
+        lua.load("result2 = math.round(10.004, 0.01)")
+            .exec()
+            .unwrap();
+        lua.load("result3 = math.round(123.456, 0.1)")
+            .exec()
+            .unwrap();
+        lua.load("result4 = math.round(125, 10)").exec().unwrap();
+        lua.load("result5 = math.round(127, 10)").exec().unwrap();
+
+        assert_eq!(lua.globals().get::<f64>("result1").unwrap(), 10.01);
+        assert_eq!(lua.globals().get::<f64>("result2").unwrap(), 10.0);
+        assert_eq!(lua.globals().get::<f64>("result3").unwrap(), 123.5);
+        assert_eq!(lua.globals().get::<f64>("result4").unwrap(), 130.0);
+        assert_eq!(lua.globals().get::<f64>("result5").unwrap(), 130.0);
+    }
 }

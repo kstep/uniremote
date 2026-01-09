@@ -1,4 +1,7 @@
-use std::sync::Arc;
+use std::sync::{
+    Arc,
+    atomic::{AtomicUsize, Ordering},
+};
 
 use axum::{
     extract::{
@@ -36,19 +39,41 @@ pub async fn websocket_handler(
     let remote = state.remotes.get(&remote_id).ok_or(StatusCode::NOT_FOUND)?;
 
     let worker = remote.worker.clone();
-    Ok(ws.on_upgrade(move |socket| handle_websocket(socket, worker)))
+    let connection_count = remote.connection_count.clone();
+
+    Ok(ws.on_upgrade(move |socket| handle_websocket(socket, worker, connection_count)))
 }
 
-async fn handle_websocket(socket: WebSocket, worker: LuaWorker) {
+async fn handle_websocket(
+    socket: WebSocket,
+    worker: LuaWorker,
+    connection_count: Arc<AtomicUsize>,
+) {
+    // Increment connection count and trigger focus if this is the first connection
+    let prev_count = connection_count.fetch_add(1, Ordering::SeqCst);
+    if prev_count == 0 {
+        if let Err(error) = worker.trigger_event("focus").await {
+            tracing::warn!("failed to trigger focus event: {error}");
+        }
+    }
+
     let (tx, rx) = socket.split();
 
     let mut send_task = tokio::spawn(handle_outgoing_messages(tx, worker.subscribe()));
-    let mut recv_task = tokio::spawn(handle_incoming_messages(worker, rx));
+    let mut recv_task = tokio::spawn(handle_incoming_messages(worker.clone(), rx));
 
     // Wait for either task to finish
     tokio::select! {
         _ = &mut send_task => recv_task.abort(),
         _ = &mut recv_task => send_task.abort(),
+    }
+
+    // Decrement connection count and trigger blur if this was the last connection
+    let new_count = connection_count.fetch_sub(1, Ordering::SeqCst) - 1;
+    if new_count == 0 {
+        if let Err(error) = worker.trigger_event("blur").await {
+            tracing::warn!("failed to trigger blur event: {error}");
+        }
     }
 }
 

@@ -43,10 +43,18 @@ impl LuaWorker {
         let inbox = self.inbox.clone();
         let state = self.state.clone();
         tokio::spawn(async move {
+            if let Err(error) = state.trigger_event("create") {
+                tracing::error!("failed to run create event handler: {error}");
+            }
+
             while let Ok(CallActionRequest { action, args }) = inbox.recv_async().await {
                 if let Err(error) = state.call_action(action, args) {
                     tracing::error!("failed to handle action request: {error:#}");
                 }
+            }
+
+            if let Err(error) = state.trigger_event("destroy") {
+                tracing::error!("failed to run destroy event handler: {error}");
             }
         });
     }
@@ -70,5 +78,11 @@ impl LuaWorker {
 
         tracing::error!("failed to send action request to worker after {MAX_SEND_RETRIES} retries");
         Err(anyhow!("failed to send action request to worker"))
+    }
+
+    pub async fn trigger_event(&self, event_name: &str) -> anyhow::Result<()> {
+        // Trigger the event directly on the state
+        // This is safe because we're just calling into Lua synchronously
+        self.state.trigger_event(event_name)
     }
 }

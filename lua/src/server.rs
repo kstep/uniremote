@@ -25,10 +25,13 @@ fn update(lua: &Lua, updates: Variadic<Table>) -> Result<()> {
         // Create the ServerMessage::Update
         let message = ServerMessage::Update { action, args };
 
-        tracing::info!("sending server update: {message:?}");
+        tracing::debug!("sending server update: {message:?}");
 
-        // Send to broadcast channel (ignore if no receivers)
-        let _ = broadcast_tx.send(message);
+        // Send to broadcast channel - use try_send to avoid blocking
+        // If there are no receivers, this will just drop the message
+        if let Err(error) = broadcast_tx.try_send(message) {
+            tracing::debug!("failed to send update (no active connections): {error}");
+        }
     }
 
     Ok(())

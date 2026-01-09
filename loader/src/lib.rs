@@ -3,7 +3,7 @@ use std::{
     fs::File,
     io::BufReader,
     path::{Path, PathBuf},
-    sync::Arc,
+    sync::{Arc, atomic::AtomicUsize},
 };
 
 use anyhow::{Context, Result};
@@ -16,12 +16,17 @@ use uniremote_worker::LuaWorker;
 pub struct LoadedRemote {
     pub remote: Remote,
     pub worker: LuaWorker,
+    pub connection_count: Arc<AtomicUsize>,
 }
 
 impl LoadedRemote {
     pub fn new(remote: Remote, state: LuaState) -> Self {
         let worker = LuaWorker::new(state);
-        Self { remote, worker }
+        Self {
+            remote,
+            worker,
+            connection_count: Arc::new(AtomicUsize::new(0)),
+        }
     }
 }
 
@@ -88,10 +93,6 @@ fn load_remote(
     if !lua.detect().context("failed to run events.detect()")? {
         tracing::info!("skipping remote {remote_id} because event.detect() returned false");
         return Ok(None);
-    }
-
-    if let Err(error) = lua.trigger_event("create") {
-        tracing::warn!("failed to trigger create event for remote {remote_id}: {error:#}");
     }
 
     let remote = Remote {

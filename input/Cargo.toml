@@ -6,6 +6,7 @@ license = "MIT"
 
 [dependencies]
 thiserror = "2"
+unicase = "2"
 
 [target.'cfg(target_os = "linux")'.dependencies]
 evdev = { version = "0.13", features = ["serde"] }

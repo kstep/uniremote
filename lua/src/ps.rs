@@ -12,18 +12,21 @@ fn usage(lua: &Lua, _: ()) -> Result<Table> {
     // Get memory information
     let memphysused = sys.used_memory();
     let memphystotal = sys.total_memory();
+    let memload = if memphystotal > 0 {
+        (memphysused as f64 / memphystotal as f64) * 100.0
+    } else {
+        0.0
+    };
 
     // Create and return a Lua table with the results
     let result = lua.create_table()?;
     result.set("cpuload", cpuload)?;
+    result.set("memload", memload)?;
     result.set("memphysused", memphysused)?;
     result.set("memphystotal", memphystotal)?;
 
     tracing::info!(
-        "ps.usage: cpuload={:.2}%, memphysused={} bytes, memphystotal={} bytes",
-        cpuload,
-        memphysused,
-        memphystotal
+        "ps.usage: cpuload={cpuload:.2}%, memload={memload:.2}%, memphysused={memphysused} bytes, memphystotal={memphystotal} bytes"
     );
 
     Ok(result)
@@ -65,6 +68,7 @@ mod tests {
         let result: Table = lua.globals().get("result").unwrap();
 
         let cpuload: f64 = result.get("cpuload").unwrap();
+        let memload: f64 = result.get("memload").unwrap();
         let memphysused: u64 = result.get("memphysused").unwrap();
         let memphystotal: u64 = result.get("memphystotal").unwrap();
 
@@ -75,6 +79,8 @@ mod tests {
             cpuload <= 10000.0,
             "cpuload should be within reasonable bounds"
         );
+        assert!(memload >= 0.0, "memload should be non-negative");
+        assert!(memload <= 100.0, "memload should not exceed 100%");
         assert!(
             memphysused <= memphystotal,
             "used memory should not exceed total memory"
@@ -98,6 +104,7 @@ mod tests {
             
             assert(type(result) == "table", "result should be a table")
             assert(type(result.cpuload) == "number", "cpuload should be a number")
+            assert(type(result.memload) == "number", "memload should be a number")
             assert(type(result.memphysused) == "number", "memphysused should be a number")
             assert(type(result.memphystotal) == "number", "memphystotal should be a number")
         "#,
@@ -126,12 +133,14 @@ mod tests {
 
         let result: Table = lua.globals().get("result").unwrap();
         let cpuload: f64 = result.get("cpuload").unwrap();
+        let memload: f64 = result.get("memload").unwrap();
         let memphysused: u64 = result.get("memphysused").unwrap();
         let memphystotal: u64 = result.get("memphystotal").unwrap();
 
         // Print for manual verification
         eprintln!("ps.usage() system values:");
         eprintln!("  cpuload: {:.2}%", cpuload);
+        eprintln!("  memload: {:.2}%", memload);
         eprintln!(
             "  memphysused: {} bytes ({:.2} MB)",
             memphysused,

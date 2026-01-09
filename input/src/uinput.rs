@@ -3,13 +3,14 @@ use std::{collections::HashMap, sync::Mutex};
 use evdev::{
     AttributeSet, EventType, InputEvent, KeyCode, RelativeAxisCode, uinput::VirtualDevice,
 };
+use unicase::UniCase;
 
 use crate::{InputBackend, InputError, MouseButton};
 
 pub struct UInputBackend {
     keyboard_device: Mutex<VirtualDevice>,
     mouse_device: Mutex<VirtualDevice>,
-    key_map: HashMap<String, KeyCode>,
+    key_map: HashMap<UniCase<&'static str>, KeyCode>,
 }
 
 impl UInputBackend {
@@ -61,130 +62,104 @@ impl UInputBackend {
             .map_err(|e| InputError::InitError(e.to_string()))
     }
 
-    fn build_key_map() -> HashMap<String, KeyCode> {
-        let mut map = HashMap::new();
-
-        // Letters
-        map.insert("a".to_string(), KeyCode::KEY_A);
-        map.insert("b".to_string(), KeyCode::KEY_B);
-        map.insert("c".to_string(), KeyCode::KEY_C);
-        map.insert("d".to_string(), KeyCode::KEY_D);
-        map.insert("e".to_string(), KeyCode::KEY_E);
-        map.insert("f".to_string(), KeyCode::KEY_F);
-        map.insert("g".to_string(), KeyCode::KEY_G);
-        map.insert("h".to_string(), KeyCode::KEY_H);
-        map.insert("i".to_string(), KeyCode::KEY_I);
-        map.insert("j".to_string(), KeyCode::KEY_J);
-        map.insert("k".to_string(), KeyCode::KEY_K);
-        map.insert("l".to_string(), KeyCode::KEY_L);
-        map.insert("m".to_string(), KeyCode::KEY_M);
-        map.insert("n".to_string(), KeyCode::KEY_N);
-        map.insert("o".to_string(), KeyCode::KEY_O);
-        map.insert("p".to_string(), KeyCode::KEY_P);
-        map.insert("q".to_string(), KeyCode::KEY_Q);
-        map.insert("r".to_string(), KeyCode::KEY_R);
-        map.insert("s".to_string(), KeyCode::KEY_S);
-        map.insert("t".to_string(), KeyCode::KEY_T);
-        map.insert("u".to_string(), KeyCode::KEY_U);
-        map.insert("v".to_string(), KeyCode::KEY_V);
-        map.insert("w".to_string(), KeyCode::KEY_W);
-        map.insert("x".to_string(), KeyCode::KEY_X);
-        map.insert("y".to_string(), KeyCode::KEY_Y);
-        map.insert("z".to_string(), KeyCode::KEY_Z);
-
-        // Numbers
-        map.insert("0".to_string(), KeyCode::KEY_0);
-        map.insert("1".to_string(), KeyCode::KEY_1);
-        map.insert("2".to_string(), KeyCode::KEY_2);
-        map.insert("3".to_string(), KeyCode::KEY_3);
-        map.insert("4".to_string(), KeyCode::KEY_4);
-        map.insert("5".to_string(), KeyCode::KEY_5);
-        map.insert("6".to_string(), KeyCode::KEY_6);
-        map.insert("7".to_string(), KeyCode::KEY_7);
-        map.insert("8".to_string(), KeyCode::KEY_8);
-        map.insert("9".to_string(), KeyCode::KEY_9);
-
-        // Common keys
-        map.insert("space".to_string(), KeyCode::KEY_SPACE);
-        map.insert("enter".to_string(), KeyCode::KEY_ENTER);
-        map.insert("return".to_string(), KeyCode::KEY_ENTER);
-        map.insert("tab".to_string(), KeyCode::KEY_TAB);
-        map.insert("escape".to_string(), KeyCode::KEY_ESC);
-        map.insert("esc".to_string(), KeyCode::KEY_ESC);
-        map.insert("menu".to_string(), KeyCode::KEY_MENU);
-        map.insert("backspace".to_string(), KeyCode::KEY_BACKSPACE);
-        map.insert("back".to_string(), KeyCode::KEY_BACKSPACE);
-        map.insert("insert".to_string(), KeyCode::KEY_INSERT);
-        map.insert("delete".to_string(), KeyCode::KEY_DELETE);
-
-        // Arrow keys
-        map.insert("up".to_string(), KeyCode::KEY_UP);
-        map.insert("down".to_string(), KeyCode::KEY_DOWN);
-        map.insert("left".to_string(), KeyCode::KEY_LEFT);
-        map.insert("right".to_string(), KeyCode::KEY_RIGHT);
-        map.insert("pageup".to_string(), KeyCode::KEY_PAGEUP);
-        map.insert("pagedown".to_string(), KeyCode::KEY_PAGEDOWN);
-        map.insert("scrollup".to_string(), KeyCode::KEY_SCROLLUP);
-        map.insert("scrolldown".to_string(), KeyCode::KEY_SCROLLDOWN);
-        map.insert("home".to_string(), KeyCode::KEY_HOME);
-        map.insert("end".to_string(), KeyCode::KEY_END);
-
-        // Modifiers
-        map.insert("shift".to_string(), KeyCode::KEY_LEFTSHIFT);
-        map.insert("ctrl".to_string(), KeyCode::KEY_LEFTCTRL);
-        map.insert("control".to_string(), KeyCode::KEY_LEFTCTRL);
-        map.insert("alt".to_string(), KeyCode::KEY_LEFTALT);
-        map.insert("lalt".to_string(), KeyCode::KEY_LEFTALT);
-        map.insert("ralt".to_string(), KeyCode::KEY_RIGHTALT);
-        map.insert("super".to_string(), KeyCode::KEY_LEFTMETA);
-        map.insert("lsuper".to_string(), KeyCode::KEY_LEFTMETA);
-        map.insert("rsuper".to_string(), KeyCode::KEY_RIGHTMETA);
-        map.insert("meta".to_string(), KeyCode::KEY_LEFTMETA);
-        map.insert("lmeta".to_string(), KeyCode::KEY_LEFTMETA);
-        map.insert("rmeta".to_string(), KeyCode::KEY_RIGHTMETA);
-        map.insert("win".to_string(), KeyCode::KEY_LEFTMETA);
-        map.insert("lwin".to_string(), KeyCode::KEY_LEFTMETA);
-        map.insert("rwin".to_string(), KeyCode::KEY_RIGHTMETA);
-        map.insert("cmd".to_string(), KeyCode::KEY_LEFTCTRL);
-
-        // Media keys
-        map.insert("volumeup".to_string(), KeyCode::KEY_VOLUMEUP);
-        map.insert("volumedown".to_string(), KeyCode::KEY_VOLUMEDOWN);
-        map.insert("volumemute".to_string(), KeyCode::KEY_MUTE);
-        map.insert("volume_up".to_string(), KeyCode::KEY_VOLUMEUP);
-        map.insert("volume_down".to_string(), KeyCode::KEY_VOLUMEDOWN);
-        map.insert("volume_mute".to_string(), KeyCode::KEY_MUTE);
-        map.insert("mediaplaypause".to_string(), KeyCode::KEY_PLAYPAUSE);
-        map.insert("mediastop".to_string(), KeyCode::KEY_STOP);
-        map.insert("medianext".to_string(), KeyCode::KEY_NEXT);
-        map.insert("mediaprevious".to_string(), KeyCode::KEY_PREVIOUS);
-
-        map.insert("oem_plus".to_string(), KeyCode::KEY_KPPLUS);
-        map.insert("oem_minus".to_string(), KeyCode::KEY_KPMINUS);
-        map.insert("oem_0".to_string(), KeyCode::KEY_KP0);
-        map.insert("oem_1".to_string(), KeyCode::KEY_KP1);
-        map.insert("oem_2".to_string(), KeyCode::KEY_KP2);
-        map.insert("oem_3".to_string(), KeyCode::KEY_KP3);
-        map.insert("oem_4".to_string(), KeyCode::KEY_KP4);
-        map.insert("oem_5".to_string(), KeyCode::KEY_KP5);
-        map.insert("oem_6".to_string(), KeyCode::KEY_KP6);
-        map.insert("oem_7".to_string(), KeyCode::KEY_KP7);
-        map.insert("oem_8".to_string(), KeyCode::KEY_KP8);
-        map.insert("oem_9".to_string(), KeyCode::KEY_KP9);
-
-        // Function keys
-        for n in 1..=12 {
-            let key_code = KeyCode::KEY_F1.code() + (n - 1);
-            let key = KeyCode::new(key_code);
-            map.insert(format!("f{}", n), key);
+    fn build_key_map() -> HashMap<UniCase<&'static str>, KeyCode> {
+        macro_rules! key_map {
+            ($($key:expr => $code:ident),* $(,)?) => {{
+                let mut map = HashMap::new();
+                $(
+                    map.insert(UniCase::new($key), KeyCode::$code);
+                )*
+                map
+            }};
         }
 
-        map
+        key_map![
+            // Letters
+            "a" => KEY_A, "b" => KEY_B, "c" => KEY_C,
+            "d" => KEY_D, "e" => KEY_E, "f" => KEY_F,
+            "g" => KEY_G, "h" => KEY_H, "i" => KEY_I,
+            "j" => KEY_J, "k" => KEY_K, "l" => KEY_L,
+            "m" => KEY_M, "n" => KEY_N, "o" => KEY_O,
+            "p" => KEY_P, "q" => KEY_Q, "r" => KEY_R,
+            "s" => KEY_S, "t" => KEY_T, "u" => KEY_U,
+            "v" => KEY_V, "w" => KEY_W, "x" => KEY_X,
+            "y" => KEY_Y, "z" => KEY_Z,
+
+            // Numbers
+            "0" => KEY_0, "1" => KEY_1, "2" => KEY_2,
+            "3" => KEY_3, "4" => KEY_4, "5" => KEY_5,
+            "6" => KEY_6, "7" => KEY_7, "8" => KEY_8,
+            "9" => KEY_9,
+
+            // Function keys
+            "f1" => KEY_F1, "f2" => KEY_F2, "f3" => KEY_F3,
+            "f4" => KEY_F4, "f5" => KEY_F5, "f6" => KEY_F6,
+            "f7" => KEY_F7, "f8" => KEY_F8, "f9" => KEY_F9,
+            "f10" => KEY_F10, "f11" => KEY_F11, "f12" => KEY_F12,
+
+            // Common keys
+            "space" => KEY_SPACE,
+            "enter" => KEY_ENTER, "return" => KEY_ENTER,
+            "tab" => KEY_TAB,
+            "escape" => KEY_ESC, "esc" => KEY_ESC,
+            "menu" => KEY_MENU,
+            "backspace" => KEY_BACKSPACE, "back" => KEY_BACKSPACE,
+            "insert" => KEY_INSERT,
+            "delete" => KEY_DELETE,
+
+            // Arrow keys
+            "up" => KEY_UP, "down" => KEY_DOWN,
+            "left" => KEY_LEFT, "right" => KEY_RIGHT,
+            "pageup" => KEY_PAGEUP, "pagedown" => KEY_PAGEDOWN,
+            "scrollup" => KEY_SCROLLUP, "scrolldown" => KEY_SCROLLDOWN,
+            "home" => KEY_HOME, "end" => KEY_END,
+
+            // Modifiers
+            "shift" => KEY_LEFTSHIFT,
+            "ctrl" => KEY_LEFTCTRL, "control" => KEY_LEFTCTRL,
+            "alt" => KEY_LEFTALT, "lalt" => KEY_LEFTALT,
+            "ralt" => KEY_RIGHTALT,
+            "super" => KEY_LEFTMETA, "lsuper" => KEY_LEFTMETA,
+            "rsuper" => KEY_RIGHTMETA,
+            "meta" => KEY_LEFTMETA, "lmeta" => KEY_LEFTMETA,
+            "rmeta" => KEY_RIGHTMETA,
+            "win" => KEY_LEFTMETA, "lwin" => KEY_LEFTMETA,
+            "rwin" => KEY_RIGHTMETA,
+            "cmd" => KEY_LEFTCTRL,
+
+            // Media keys
+            "volumeup" => KEY_VOLUMEUP, "volume_up" => KEY_VOLUMEUP,
+            "volumedown" => KEY_VOLUMEDOWN, "volume_down" => KEY_VOLUMEDOWN,
+            "volumemute" => KEY_MUTE, "volume_mute" => KEY_MUTE,
+            "mediaplaypause" => KEY_PLAYPAUSE,
+            "mediastop" => KEY_STOP,
+            "medianext" => KEY_NEXT,
+            "mediaprevious" => KEY_PREVIOUS,
+
+            // Keypad
+            "oem_plus" => KEY_KPPLUS, "oem_minus" => KEY_KPMINUS,
+            "oem_0" => KEY_KP0, "oem_1" => KEY_KP1,
+            "oem_2" => KEY_KP2, "oem_3" => KEY_KP3,
+            "oem_4" => KEY_KP4, "oem_5" => KEY_KP5,
+            "oem_6" => KEY_KP6, "oem_7" => KEY_KP7,
+            "oem_8" => KEY_KP8, "oem_9" => KEY_KP9,
+            "plus" => KEY_KPPLUS, "minus" => KEY_KPMINUS,
+            "divide" => KEY_KPSLASH, "multiply" => KEY_KPASTERISK,
+            "decimal" => KEY_KPDOT, "separator" => KEY_KPCOMMA,
+            "kpplus" => KEY_KPPLUS, "kpminus" => KEY_KPMINUS,
+            "kpslash" => KEY_KPSLASH, "kpasterisk" => KEY_KPASTERISK,
+            "kpdot" => KEY_KPDOT, "kpcomma" => KEY_KPCOMMA,
+            "num0" => KEY_KP0, "num1" => KEY_KP1,
+            "num2" => KEY_KP2, "num3" => KEY_KP3,
+            "num4" => KEY_KP4, "num5" => KEY_KP5,
+            "num6" => KEY_KP6, "num7" => KEY_KP7,
+            "num8" => KEY_KP8, "num9" => KEY_KP9,
+        ]
     }
 
     fn get_key(&self, key: &str) -> Result<KeyCode, InputError> {
         self.key_map
-            .get(&key.to_lowercase())
+            .get(&UniCase::new(key))
             .copied()
             .ok_or_else(|| InputError::SendError(format!("unknown key: {key}")))
     }
@@ -224,7 +199,15 @@ impl UInputBackend {
 
 impl InputBackend for UInputBackend {
     fn is_key(&self, key: &str) -> bool {
-        self.key_map.contains_key(&key.to_lowercase())
+        self.key_map.contains_key(&UniCase::new(key))
+    }
+
+    fn is_modifier(&self, key: &str) -> bool {
+        const MODIFIERS: &[&str] = &[
+            "shift", "ctrl", "control", "alt", "lalt", "ralt", "super", "lsuper", "rsuper", "meta",
+            "lmeta", "rmeta", "win", "lwin", "rwin", "cmd",
+        ];
+        MODIFIERS.iter().any(|&m| key.eq_ignore_ascii_case(m))
     }
 
     fn key_press(&self, key: &str) -> Result<(), InputError> {

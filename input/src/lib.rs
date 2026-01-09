@@ -12,6 +12,7 @@ pub enum InputError {
 
 pub trait InputBackend: Send + Sync {
     fn is_key(&self, key: &str) -> bool;
+    fn is_modifier(&self, key: &str) -> bool;
 
     fn key_press(&self, key: &str) -> Result<(), InputError>;
     fn key_release(&self, key: &str) -> Result<(), InputError>;

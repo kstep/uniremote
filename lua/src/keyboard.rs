@@ -60,9 +60,9 @@ fn character(_lua: &Lua, char: char) -> Result<()> {
     Ok(())
 }
 
-fn is_modifier(_lua: &Lua, key: String) -> Result<bool> {
-    let modifiers = ["shift", "ctrl", "alt", "meta"];
-    Ok(modifiers.contains(&key.as_str()))
+fn is_modifier(lua: &Lua, key: String) -> Result<bool> {
+    let backend = get_input_backend(lua);
+    Ok(backend.is_modifier(&key))
 }
 
 fn is_key(lua: &Lua, key: String) -> Result<bool> {
