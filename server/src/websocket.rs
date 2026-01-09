@@ -8,73 +8,39 @@ use axum::{
     http::StatusCode,
     response::Response,
 };
-use axum_extra::TypedHeader;
+use axum_extra::{
+    TypedHeader,
+    headers::Cookie as HeaderCookie,
+};
 use flume::Receiver;
 use futures_util::{
     sink::SinkExt,
     stream::{SplitSink, SplitStream, StreamExt},
 };
-use headers::{Header, HeaderName, HeaderValue};
 use uniremote_core::{ClientMessage, RemoteId, ServerMessage};
 use uniremote_worker::LuaWorker;
 
 use crate::AppState;
 
-/// Typed header for Sec-WebSocket-Protocol
-#[derive(Debug, Clone)]
-pub struct SecWebSocketProtocol(String);
-
-impl Header for SecWebSocketProtocol {
-    fn name() -> &'static HeaderName {
-        static NAME: HeaderName = HeaderName::from_static("sec-websocket-protocol");
-        &NAME
-    }
-
-    fn decode<'i, I>(values: &mut I) -> Result<Self, headers::Error>
-    where
-        I: Iterator<Item = &'i HeaderValue>,
-    {
-        let value = values.next().ok_or_else(headers::Error::invalid)?;
-        let s = value.to_str().map_err(|_| headers::Error::invalid())?;
-        Ok(SecWebSocketProtocol(s.to_string()))
-    }
-
-    fn encode<E: Extend<HeaderValue>>(&self, values: &mut E) {
-        if let Ok(value) = HeaderValue::from_str(&self.0) {
-            values.extend(std::iter::once(value));
-        }
-    }
-}
-
-impl SecWebSocketProtocol {
-    /// Extract the bearer token from the protocol string (format:
-    /// "bearer.{token}")
-    pub fn bearer_token(&self) -> Option<&str> {
-        // Split by comma in case multiple protocols are specified
-        self.0.split(',').find_map(|protocol| {
-            let protocol = protocol.trim();
-            protocol.strip_prefix("bearer.")
-        })
-    }
-}
+const AUTH_COOKIE_NAME: &str = "uniremote_auth";
 
 pub async fn websocket_handler(
     Path(remote_id): Path<RemoteId>,
     State(state): State<Arc<AppState>>,
-    TypedHeader(protocol): TypedHeader<SecWebSocketProtocol>,
+    TypedHeader(cookies): TypedHeader<HeaderCookie>,
     ws: WebSocketUpgrade,
 ) -> Result<Response, StatusCode> {
-    // Extract token from Sec-WebSocket-Protocol header (format: "bearer.{token}")
-    let token = protocol.bearer_token().ok_or(StatusCode::UNAUTHORIZED)?;
+    // Extract token from cookie
+    let token = cookies
+        .get(AUTH_COOKIE_NAME)
+        .ok_or(StatusCode::UNAUTHORIZED)?;
 
     state.auth_token.validate(token)?;
 
     let remote = state.remotes.get(&remote_id).ok_or(StatusCode::NOT_FOUND)?;
 
     let worker = remote.worker.clone();
-    Ok(ws
-        .protocols([format!("bearer.{token}")])
-        .on_upgrade(move |socket| handle_websocket(socket, worker)))
+    Ok(ws.on_upgrade(move |socket| handle_websocket(socket, worker)))
 }
 
 async fn handle_websocket(socket: WebSocket, worker: LuaWorker) {

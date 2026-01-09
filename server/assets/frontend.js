@@ -19,13 +19,6 @@ function connectWebSocket() {
         return;
     }
 
-    // Get auth token from cookie
-    const authToken = getCookie('uniremote_auth');
-    if (!authToken) {
-        console.log('No auth token in cookie, skipping WebSocket connection');
-        return;
-    }
-
     // Close existing connection if any
     if (ws) {
         ws.close();
@@ -39,8 +32,8 @@ function connectWebSocket() {
     console.log('Connecting to WebSocket:', wsUrl);
 
     try {
-        // Pass auth token via WebSocket subprotocol (bearer.{token})
-        ws = new WebSocket(wsUrl, [`bearer.${authToken}`]);
+        // Connect to WebSocket - cookies will be sent automatically
+        ws = new WebSocket(wsUrl);
 
         ws.onopen = () => {
             console.log('WebSocket connected');
@@ -221,16 +214,6 @@ async function callRemoteActionHTTP(action, args = []) {
         console.error('API call error:', error);
         showNotification('Network Error', 'Failed to connect to the server. Please check your connection and try again.');
     }
-}
-
-// Helper function to get cookie value by name
-function getCookie(name) {
-    const value = `; ${document.cookie}`;
-    const parts = value.split(`; ${name}=`);
-    if (parts.length === 2) {
-        return parts.pop().split(';').shift();
-    }
-    return null;
 }
 
 // Notification system
