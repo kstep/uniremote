@@ -17,9 +17,7 @@ use futures_util::{
 use uniremote_core::{ClientMessage, RemoteId, ServerMessage};
 use uniremote_worker::LuaWorker;
 
-use crate::AppState;
-
-const AUTH_COOKIE_NAME: &str = "uniremote_auth";
+use crate::{AppState, auth::AUTH_COOKIE_NAME};
 
 pub async fn websocket_handler(
     Path(remote_id): Path<RemoteId>,

@@ -3,6 +3,9 @@ use core::fmt;
 use axum::http::StatusCode;
 use subtle::ConstantTimeEq;
 
+/// Cookie name for authentication
+pub const AUTH_COOKIE_NAME: &str = "uniremote_auth";
+
 /// Authentication token generated on server start
 #[derive(Clone, Debug, Eq)]
 pub struct AuthToken(String);

@@ -21,9 +21,7 @@ use tokio_util::io::ReaderStream;
 use uniremote_core::{CallActionRequest, RemoteId};
 use uniremote_render::{Buffer, RenderHtml};
 
-use crate::AppState;
-
-const AUTH_COOKIE_NAME: &str = "uniremote_auth";
+use crate::{AppState, auth::AUTH_COOKIE_NAME};
 
 const CONTENT_TYPE_HTML: MediaType = MediaType::from_parts(TEXT, HTML, None, &[]);
 
