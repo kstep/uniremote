@@ -1,7 +1,13 @@
 use std::path::Path;
 
-use mlua::{Function, Lua, LuaSerdeExt, MaybeSend, MultiValue, Table};
+use mlua::{Error, Function, Lua, LuaSerdeExt, MaybeSend, MultiValue, Table, VmState};
+use mlua::HookTriggers;
 use uniremote_core::ActionId;
+
+// Lua security limits
+const LUA_MEMORY_LIMIT_BYTES: usize = 10 * 1024 * 1024; // 10 MB
+const LUA_INSTRUCTION_LIMIT: u64 = 1_000_000; // 1 million instructions
+const INSTRUCTION_CHECK_INTERVAL: u32 = 10_000; // Check every 10k instructions
 
 pub struct LuaState {
     lua: Lua,
@@ -10,6 +16,7 @@ pub struct LuaState {
 impl LuaState {
     pub fn empty() -> Self {
         let lua = Lua::new();
+        apply_security_limits(&lua);
         LuaState { lua }
     }
 
@@ -19,6 +26,7 @@ impl LuaState {
 
     pub fn new(script: &Path) -> anyhow::Result<Self> {
         let lua = Lua::new();
+        apply_security_limits(&lua);
 
         // Get the directory containing the script (remote directory)
         let remote_dir = script
@@ -140,4 +148,36 @@ fn load_modules(lua: &Lua) -> anyhow::Result<()> {
     crate::timer::load(lua, &libs)?;
     lua.globals().set("libs", libs)?;
     Ok(())
+}
+
+/// Apply security limits to Lua VM to prevent resource exhaustion attacks
+fn apply_security_limits(lua: &Lua) {
+    // Set memory limit to 10 MB
+    if let Err(error) = lua.set_memory_limit(LUA_MEMORY_LIMIT_BYTES) {
+        tracing::warn!("failed to set Lua memory limit: {error}");
+    } else {
+        tracing::info!("Lua memory limit set to {} bytes", LUA_MEMORY_LIMIT_BYTES);
+    }
+
+    // Set instruction count hook to limit execution to 1M instructions
+    let instruction_limit = LUA_INSTRUCTION_LIMIT;
+    let result = lua.set_hook(
+        HookTriggers::new().every_nth_instruction(INSTRUCTION_CHECK_INTERVAL),
+        move |_lua, _debug| {
+            static COUNTER: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(0);
+            let count = COUNTER.fetch_add(INSTRUCTION_CHECK_INTERVAL as u64, std::sync::atomic::Ordering::Relaxed);
+            
+            if count >= instruction_limit {
+                COUNTER.store(0, std::sync::atomic::Ordering::Relaxed);
+                return Err(Error::runtime("instruction limit exceeded"));
+            }
+            Ok(VmState::Continue)
+        },
+    );
+
+    if let Err(error) = result {
+        tracing::warn!("failed to set Lua instruction limit hook: {error}");
+    } else {
+        tracing::info!("Lua instruction limit set to {} instructions", LUA_INSTRUCTION_LIMIT);
+    }
 }

@@ -9,6 +9,7 @@ use axum::{
 };
 use axum_extra::{
     TypedHeader,
+    extract::cookie::{Cookie, CookieJar},
     headers::{Authorization, authorization::Bearer},
 };
 use headers_accept::Accept;
@@ -22,6 +23,8 @@ use uniremote_core::{CallActionRequest, RemoteId};
 use uniremote_render::{Buffer, RenderHtml};
 
 use crate::AppState;
+
+const AUTH_COOKIE_NAME: &str = "uniremote_auth";
 
 const CONTENT_TYPE_HTML: MediaType = MediaType::from_parts(TEXT, HTML, None, &[]);
 
@@ -93,7 +96,8 @@ fn list_remotes_json(state: &AppState) -> Response {
 pub async fn get_remote(
     Path(remote_id): Path<RemoteId>,
     State(state): State<Arc<AppState>>,
-) -> Result<Html<String>, StatusCode> {
+    jar: CookieJar,
+) -> Result<(CookieJar, Html<String>), StatusCode> {
     let remote_with_channel = state.remotes.get(&remote_id).ok_or(StatusCode::NOT_FOUND)?;
     let remote = &remote_with_channel.remote;
 
@@ -106,16 +110,33 @@ pub async fn get_remote(
     remote.layout.render(&mut output);
     output.add_footer();
 
-    Ok(output.into_html())
+    // Set HTTP-only cookie with auth token
+    let cookie = Cookie::build((AUTH_COOKIE_NAME, state.auth_token.to_string()))
+        .http_only(true)
+        .path("/")
+        .same_site(axum_extra::extract::cookie::SameSite::Strict)
+        .build();
+    
+    let jar = jar.add(cookie);
+
+    Ok((jar, output.into_html()))
 }
 
 pub async fn call_remote_action(
     Path(remote_id): Path<RemoteId>,
     State(state): State<Arc<AppState>>,
-    TypedHeader(auth_header): TypedHeader<Authorization<Bearer>>,
+    jar: CookieJar,
+    auth_header: Option<TypedHeader<Authorization<Bearer>>>,
     Json(request): Json<CallActionRequest>,
 ) -> Result<Json<serde_json::Value>, StatusCode> {
-    state.auth_token.validate(auth_header.token())?;
+    // Try to get token from cookie first, then fall back to Authorization header
+    let token = jar
+        .get(AUTH_COOKIE_NAME)
+        .map(|cookie| cookie.value())
+        .or_else(|| auth_header.as_ref().map(|TypedHeader(auth)| auth.token()))
+        .ok_or(StatusCode::UNAUTHORIZED)?;
+
+    state.auth_token.validate(token)?;
 
     let remote = state.remotes.get(&remote_id).ok_or(StatusCode::NOT_FOUND)?;
 
