@@ -171,6 +171,7 @@ fn load_modules(lua: &Lua) -> anyhow::Result<()> {
     let libs = lua.create_table()?;
     crate::keyboard::load(lua, &libs)?;
     crate::mouse::load(lua, &libs)?;
+    crate::ps::load(lua, &libs)?;
     crate::script::load(lua, &libs)?;
     crate::server::load(lua, &libs)?;
     crate::timer::load(lua, &libs)?;
