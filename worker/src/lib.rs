@@ -14,7 +14,8 @@ const MAX_SEND_RETRIES: usize = 10;
 /// A subscription to the outbox that tracks focus/blur events
 pub struct Subscription {
     receiver: Receiver<ServerMessage>,
-    worker: LuaWorker,
+    subscription_count: Arc<AtomicUsize>,
+    state: Arc<LuaState>,
 }
 
 impl Subscription {
@@ -27,11 +28,11 @@ impl Subscription {
 impl Drop for Subscription {
     fn drop(&mut self) {
         // Decrement subscription count
-        let prev_count = self.worker.subscription_count.fetch_sub(1, Ordering::SeqCst);
+        let prev_count = self.subscription_count.fetch_sub(1, Ordering::SeqCst);
         
         // If this was the last subscription, trigger blur
         if prev_count == 1 {
-            let state = self.worker.state.clone();
+            let state = self.state.clone();
             tokio::spawn(async move {
                 if let Err(error) = state.trigger_event("blur") {
                     tracing::warn!("failed to trigger blur event: {error}");
@@ -107,7 +108,8 @@ impl LuaWorker {
         
         Subscription {
             receiver: self.outbox.clone(),
-            worker: self.clone(),
+            subscription_count: self.subscription_count.clone(),
+            state: self.state.clone(),
         }
     }
 
@@ -126,11 +128,5 @@ impl LuaWorker {
 
         tracing::error!("failed to send action request to worker after {MAX_SEND_RETRIES} retries");
         Err(anyhow!("failed to send action request to worker"))
-    }
-
-    pub async fn trigger_event(&self, event_name: &str) -> anyhow::Result<()> {
-        // Trigger the event directly on the state
-        // This is safe because we're just calling into Lua synchronously
-        self.state.trigger_event(event_name)
     }
 }
