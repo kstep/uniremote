@@ -75,15 +75,25 @@ This guarantees:
 
 - HTTP only (no TLS)
 - Local network only
-- No authentication (MVP)
+- Token-based authentication via HTTP-only cookies
 - REST-style API
+
+---
+
+## Security Features
+
+- **Authentication**: Random token-based auth via HTTP-only cookies
+- **Lua Sandboxing**: Memory limits (10 MB default) and instruction limits (1M default)
+- **Path Validation**: Canonicalized paths prevent directory traversal attacks
+- **CSP Headers**: Content Security Policy restricts resource loading to same-origin
+- **Constant-time Comparison**: Auth tokens compared using constant-time operations to prevent timing attacks
 
 ---
 
 ## Non-Goals (MVP)
 
 - Internet exposure
-- Authentication / authorization
+- TLS/HTTPS support
 - Touchpad / gesture streaming
 - Full Unified Remote compatibility
 - Hot reload of remotes
