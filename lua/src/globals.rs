@@ -207,8 +207,7 @@ include("nonexistent.lua")
 
         // Should error - either "failed to resolve file path" or "failed to read file"
         assert!(result.is_err());
-        let error = result.unwrap_err();
-        let error_str = error.to_string();
+        let error_str = result.unwrap_err().to_string();
         assert!(
             error_str.contains("failed to resolve file path")
                 || error_str.contains("failed to read file"),
