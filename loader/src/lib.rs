@@ -115,14 +115,12 @@ fn load_remote_meta(path: &Path) -> Result<Option<RemoteMeta>> {
 
 fn load_remote_layout(path: &Path, meta: &RemoteMeta) -> Result<Layout> {
     if let Some(layout_path) = resolve_platform_file(path, meta.layout.as_ref(), "layout", "xml") {
-        // Read the XML file content
-        let xml_content = std::fs::read_to_string(layout_path)
-            .context("failed to read layout file")?;
-        
-        // Parse with quick_xml - the deserializer will handle trimming and empty elements
-        // Note: quick_xml's deserializer trims whitespace by default
-        quick_xml::de::from_str(&xml_content)
-            .context("failed to parse layout file")
+        // Use from_reader to stream the XML without loading all into memory
+        // The deserializer trims whitespace and doesn't expand empty elements by default
+        quick_xml::de::from_reader(BufReader::new(
+            File::open(layout_path).context("failed to open layout file")?,
+        ))
+        .context("failed to parse layout file")
     } else {
         Ok(Layout::default())
     }
