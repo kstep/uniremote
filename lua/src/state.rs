@@ -1,5 +1,6 @@
 use std::path::Path;
 use std::sync::atomic::{AtomicU64, Ordering};
+use std::sync::Mutex;
 
 use mlua::{Error, Function, Lua, LuaSerdeExt, MaybeSend, MultiValue, Table, VmState};
 use mlua::HookTriggers;
@@ -28,8 +29,12 @@ impl Default for LuaLimits {
     }
 }
 
+// Global instruction counter that can be reset per action call
+static INSTRUCTION_COUNTER: AtomicU64 = AtomicU64::new(0);
+
 pub struct LuaState {
     lua: Lua,
+    instruction_limit: u64,
 }
 
 impl LuaState {
@@ -40,7 +45,10 @@ impl LuaState {
     pub fn empty_with_limits(limits: LuaLimits) -> Self {
         let lua = Lua::new();
         apply_security_limits(&lua, limits);
-        LuaState { lua }
+        LuaState { 
+            lua,
+            instruction_limit: limits.max_instructions,
+        }
     }
 
     pub fn add_state<T: MaybeSend + 'static>(&self, state: T) {
@@ -66,7 +74,10 @@ impl LuaState {
         let script_content = std::fs::read(script)?;
         lua.load(script_content).exec()?;
 
-        Ok(LuaState { lua })
+        Ok(LuaState { 
+            lua,
+            instruction_limit: limits.max_instructions,
+        })
     }
 
     fn actions(&self) -> anyhow::Result<Table> {
@@ -121,6 +132,9 @@ impl LuaState {
         action_id: ActionId,
         args: Option<Vec<serde_json::Value>>,
     ) -> anyhow::Result<()> {
+        // Reset instruction counter at the start of each action call
+        INSTRUCTION_COUNTER.store(0, Ordering::Relaxed);
+        
         let action_fn = self.action(&action_id)?;
         let preaction = self.lua.globals().get::<Function>("preaction").ok();
         let postaction = self.lua.globals().get::<Function>("postaction").ok();
@@ -189,15 +203,14 @@ fn apply_security_limits(lua: &Lua, limits: LuaLimits) {
     }
 
     // Set instruction count hook to limit execution
+    // The counter is reset at the start of each action call
     let instruction_limit = limits.max_instructions;
     let result = lua.set_hook(
         HookTriggers::new().every_nth_instruction(INSTRUCTION_CHECK_INTERVAL),
         move |_lua, _debug| {
-            static COUNTER: AtomicU64 = AtomicU64::new(0);
-            let count = COUNTER.fetch_add(INSTRUCTION_CHECK_INTERVAL as u64, Ordering::Relaxed);
+            let count = INSTRUCTION_COUNTER.fetch_add(INSTRUCTION_CHECK_INTERVAL as u64, Ordering::Relaxed);
             
             if count >= instruction_limit {
-                COUNTER.store(0, Ordering::Relaxed);
                 return Err(Error::runtime("instruction limit exceeded"));
             }
             Ok(VmState::Continue)
