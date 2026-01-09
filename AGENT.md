@@ -96,3 +96,20 @@ This guarantees:
 - Unknown layout tags are ignored with warnings
 - Lua failures do not crash the server
 - Clear separation of responsibilities per crate
+
+---
+
+## Coding Standards
+
+### String Formatting
+- **Always use variable interpolation** in `format!` strings
+- Example: `format!("text {variable}")` ✓
+- Avoid: `format!("text {}", variable)` when the variable can be named
+
+### Error Handling
+- **Use full variable names** in pattern match branches for errors
+- Example: `Err(error)` ✓
+- Avoid: `Err(e)` or `Err(_)` when the error is used
+
+### Rationale
+These conventions improve code readability and maintainability by making variable usage explicit and self-documenting.

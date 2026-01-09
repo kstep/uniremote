@@ -97,8 +97,8 @@ async fn handle_outgoing_messages(
     while let Ok(msg) = receiver.recv_async().await {
         let json = match serde_json::to_string(&msg) {
             Ok(json) => json,
-            Err(e) => {
-                tracing::error!("failed to serialize server message: {e}");
+            Err(error) => {
+                tracing::error!("failed to serialize server message: {error}");
                 continue;
             }
         };
@@ -115,8 +115,8 @@ async fn handle_incoming_messages(worker: LuaWorker, mut receiver: SplitStream<W
             Ok(Message::Text(text)) => {
                 let client_msg: ClientMessage = match serde_json::from_str(&text) {
                     Ok(msg) => msg,
-                    Err(e) => {
-                        tracing::error!("failed to parse client message: {e}");
+                    Err(error) => {
+                        tracing::error!("failed to parse client message: {error}");
                         continue;
                     }
                 };
@@ -131,8 +131,8 @@ async fn handle_incoming_messages(worker: LuaWorker, mut receiver: SplitStream<W
             }
             Ok(Message::Close(_)) => break,
             Ok(_) => {}
-            Err(e) => {
-                tracing::error!("websocket error: {e}");
+            Err(error) => {
+                tracing::error!("websocket error: {error}");
                 break;
             }
         }
