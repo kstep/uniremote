@@ -7,9 +7,9 @@ use std::{
 };
 
 use anyhow::{Context, Result};
-pub use uniremote_lua::LuaLimits;
 use uniremote_core::{Layout, PLATFORM, Platform, Remote, RemoteId, RemoteMeta};
 use uniremote_input::UInputBackend;
+pub use uniremote_lua::LuaLimits;
 use uniremote_lua::LuaState;
 use uniremote_worker::LuaWorker;
 
@@ -25,7 +25,10 @@ impl LoadedRemote {
     }
 }
 
-pub fn load_remotes(remotes_dir: PathBuf, lua_limits: LuaLimits) -> anyhow::Result<HashMap<RemoteId, LoadedRemote>> {
+pub fn load_remotes(
+    remotes_dir: PathBuf,
+    lua_limits: LuaLimits,
+) -> anyhow::Result<HashMap<RemoteId, LoadedRemote>> {
     let backend = Arc::new(UInputBackend::new().context("failed to initialize input backend")?);
 
     Ok(walkdir::WalkDir::new(&remotes_dir)
@@ -118,7 +121,8 @@ fn load_remote_meta(path: &Path) -> Result<Option<RemoteMeta>> {
 fn load_remote_layout(path: &Path, meta: &RemoteMeta) -> Result<Layout> {
     if let Some(layout_path) = resolve_platform_file(path, meta.layout.as_ref(), "layout", "xml") {
         // Use from_reader to stream the XML without loading all into memory
-        // The deserializer trims whitespace and doesn't expand empty elements by default
+        // The deserializer trims whitespace and doesn't expand empty elements by
+        // default
         quick_xml::de::from_reader(BufReader::new(
             File::open(layout_path).context("failed to open layout file")?,
         ))

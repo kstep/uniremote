@@ -3,14 +3,14 @@ use std::{collections::HashMap, sync::Arc};
 use anyhow::Context;
 use axum::{
     Router,
-    http::{Method, header, HeaderValue},
+    http::{HeaderValue, Method, header},
     routing::{get, post},
 };
 use tower_http::{
     cors::{AllowOrigin, CorsLayer},
     services::ServeDir,
-    trace::TraceLayer,
     set_header::SetResponseHeaderLayer,
+    trace::TraceLayer,
 };
 use uniremote_core::RemoteId;
 use uniremote_loader::LoadedRemote;
@@ -60,7 +60,7 @@ pub async fn run(
 
     // Content Security Policy headers for XSS protection
     let csp_header = HeaderValue::from_static(
-        "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self'; connect-src 'self'; font-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'"
+        "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self'; connect-src 'self'; font-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'",
     );
 
     let app = Router::new()

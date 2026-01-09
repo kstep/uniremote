@@ -32,14 +32,14 @@ pub async fn login(
 ) -> Result<(CookieJar, Redirect), StatusCode> {
     // Validate the token
     state.auth_token.validate(&token)?;
-    
+
     // Set HTTP-only cookie with auth token
     let cookie = Cookie::build((AUTH_COOKIE_NAME, token))
         .http_only(true)
         .path("/")
         .same_site(SameSite::Strict)
         .build();
-    
+
     Ok((jar.add(cookie), Redirect::to("/")))
 }
 

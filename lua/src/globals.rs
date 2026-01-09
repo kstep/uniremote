@@ -19,26 +19,26 @@ fn init_global_tables(lua: &Lua) -> anyhow::Result<()> {
 fn load_include(lua: &Lua, remote_dir: &Path) -> anyhow::Result<()> {
     // Clone the remote directory path to move into the closure
     let remote_dir = remote_dir.to_path_buf();
-    
+
     // Canonicalize the remote directory to get absolute path for security checks
-    let remote_dir_canonical = remote_dir.canonicalize()
+    let remote_dir_canonical = remote_dir
+        .canonicalize()
         .unwrap_or_else(|_| remote_dir.clone());
 
     // Create the include function as a closure that captures remote_dir
     let include_fn = lua.create_function(move |lua, filename: String| {
         // Resolve the path relative to the remote directory
         let file_path = remote_dir.join(&filename);
-        
+
         // Canonicalize the resolved path and check it's within the remote directory
         // This prevents directory traversal attacks using .. or symlinks
-        let file_path_canonical = file_path.canonicalize()
-            .map_err(|error| {
-                Error::runtime(format!(
-                    "failed to resolve file path '{}': {error}",
-                    file_path.display()
-                ))
-            })?;
-        
+        let file_path_canonical = file_path.canonicalize().map_err(|error| {
+            Error::runtime(format!(
+                "failed to resolve file path '{}': {error}",
+                file_path.display()
+            ))
+        })?;
+
         if !file_path_canonical.starts_with(&remote_dir_canonical) {
             return Err(Error::runtime(format!(
                 "access denied: file '{}' is outside the remote directory",
@@ -59,9 +59,7 @@ fn load_include(lua: &Lua, remote_dir: &Path) -> anyhow::Result<()> {
         lua.load(script_content)
             .set_name(file_path_canonical.display().to_string())
             .exec()
-            .map_err(|error| {
-                Error::runtime(format!("failed to execute included file: {error}"))
-            })?;
+            .map_err(|error| Error::runtime(format!("failed to execute included file: {error}")))?;
 
         Ok(())
     })?;
@@ -212,7 +210,8 @@ include("nonexistent.lua")
         let error = result.unwrap_err();
         let error_str = error.to_string();
         assert!(
-            error_str.contains("failed to resolve file path") || error_str.contains("failed to read file"),
+            error_str.contains("failed to resolve file path")
+                || error_str.contains("failed to read file"),
             "Unexpected error message: {}",
             error_str
         );

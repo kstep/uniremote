@@ -14,9 +14,7 @@ fn open(_lua: &Lua, (path, args): (String, MultiValue)) -> Result<()> {
         .arg(path)
         .args(args.iter().filter_map(|v| v.to_string().ok()))
         .status()
-        .map_err(|error| {
-            Error::runtime(format_args!("failed to execute open command: {error}"))
-        })?;
+        .map_err(|error| Error::runtime(format_args!("failed to execute open command: {error}")))?;
     Ok(())
 }
 
@@ -41,14 +39,11 @@ fn shell(_lua: &Lua, args: MultiValue) -> Result<(String, String, i32)> {
             .arg("-c")
             .arg(args[0].to_string()?)
             .output()
-            .map_err(|error| {
-                Error::runtime(format_args!("failed to execute command: {error}"))
-            })?
+            .map_err(|error| Error::runtime(format_args!("failed to execute command: {error}")))?
     } else {
         // Multiple args: create temporary script
-        let mut temp_file = tempfile::NamedTempFile::new().map_err(|error| {
-            Error::runtime(format_args!("failed to create temp file: {error}"))
-        })?;
+        let mut temp_file = tempfile::NamedTempFile::new()
+            .map_err(|error| Error::runtime(format_args!("failed to create temp file: {error}")))?;
 
         for line in &args {
             writeln!(temp_file, "{}", line.to_string()?).map_err(|error| {
@@ -59,19 +54,16 @@ fn shell(_lua: &Lua, args: MultiValue) -> Result<(String, String, i32)> {
         // Make executable
         let path = temp_file.path();
         let mut perms = fs::metadata(path)
-            .map_err(|error| {
-                Error::runtime(format_args!("failed to get file metadata: {error}"))
-            })?
+            .map_err(|error| Error::runtime(format_args!("failed to get file metadata: {error}")))?
             .permissions();
         perms.set_mode(0o700);
-        fs::set_permissions(path, perms).map_err(|error| {
-            Error::runtime(format_args!("failed to set permissions: {error}"))
-        })?;
+        fs::set_permissions(path, perms)
+            .map_err(|error| Error::runtime(format_args!("failed to set permissions: {error}")))?;
 
         // Execute
-        Command::new(path).output().map_err(|error| {
-            Error::runtime(format_args!("failed to execute script: {error}"))
-        })?
+        Command::new(path)
+            .output()
+            .map_err(|error| Error::runtime(format_args!("failed to execute script: {error}")))?
 
         // temp_file is automatically deleted when it goes out of scope
     };

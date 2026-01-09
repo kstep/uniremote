@@ -1,9 +1,11 @@
-use std::path::Path;
-use std::sync::atomic::{AtomicU64, Ordering};
-use std::sync::Mutex;
+use std::{
+    path::Path,
+    sync::atomic::{AtomicU64, Ordering},
+};
 
-use mlua::{Error, Function, Lua, LuaSerdeExt, MaybeSend, MultiValue, Table, VmState};
-use mlua::HookTriggers;
+use mlua::{
+    Error, Function, HookTriggers, Lua, LuaSerdeExt, MaybeSend, MultiValue, Table, VmState,
+};
 use uniremote_core::ActionId;
 
 // Default Lua security limits
@@ -34,17 +36,13 @@ static INSTRUCTION_COUNTER: AtomicU64 = AtomicU64::new(0);
 
 pub struct LuaState {
     lua: Lua,
-    instruction_limit: u64,
 }
 
 impl LuaState {
     pub fn empty(limits: LuaLimits) -> Self {
         let lua = Lua::new();
         apply_security_limits(&lua, limits);
-        LuaState { 
-            lua,
-            instruction_limit: limits.max_instructions,
-        }
+        LuaState { lua }
     }
 
     pub fn add_state<T: MaybeSend + 'static>(&self, state: T) {
@@ -66,10 +64,7 @@ impl LuaState {
         let script_content = std::fs::read(script)?;
         lua.load(script_content).exec()?;
 
-        Ok(LuaState { 
-            lua,
-            instruction_limit: limits.max_instructions,
-        })
+        Ok(LuaState { lua })
     }
 
     fn actions(&self) -> anyhow::Result<Table> {
@@ -126,7 +121,7 @@ impl LuaState {
     ) -> anyhow::Result<()> {
         // Reset instruction counter at the start of each action call
         INSTRUCTION_COUNTER.store(0, Ordering::Relaxed);
-        
+
         let action_fn = self.action(&action_id)?;
         let preaction = self.lua.globals().get::<Function>("preaction").ok();
         let postaction = self.lua.globals().get::<Function>("postaction").ok();
@@ -189,7 +184,11 @@ fn apply_security_limits(lua: &Lua, limits: LuaLimits) {
     if let Err(error) = lua.set_memory_limit(limits.memory_mb * 1024 * 1024) {
         tracing::warn!("failed to set Lua memory limit: {error}");
     } else {
-        tracing::info!("lua memory limit set to {} MB ({} bytes)", limits.memory_mb, limits.memory_mb * 1024 * 1024);
+        tracing::info!(
+            "lua memory limit set to {} MB ({} bytes)",
+            limits.memory_mb,
+            limits.memory_mb * 1024 * 1024
+        );
     }
 
     // Set instruction count hook to limit execution
@@ -197,8 +196,9 @@ fn apply_security_limits(lua: &Lua, limits: LuaLimits) {
     let result = lua.set_hook(
         HookTriggers::new().every_nth_instruction(INSTRUCTION_CHECK_INTERVAL),
         move |_lua, _debug| {
-            let count = INSTRUCTION_COUNTER.fetch_add(INSTRUCTION_CHECK_INTERVAL as u64, Ordering::Relaxed);
-            
+            let count =
+                INSTRUCTION_COUNTER.fetch_add(INSTRUCTION_CHECK_INTERVAL as u64, Ordering::Relaxed);
+
             if count >= limits.max_instructions {
                 return Err(Error::runtime("instruction limit exceeded"));
             }
@@ -209,6 +209,9 @@ fn apply_security_limits(lua: &Lua, limits: LuaLimits) {
     if let Err(error) = result {
         tracing::warn!("failed to set Lua instruction limit hook: {error}");
     } else {
-        tracing::info!("lua instruction limit set to {} instructions", limits.max_instructions);
+        tracing::info!(
+            "lua instruction limit set to {} instructions",
+            limits.max_instructions
+        );
     }
 }

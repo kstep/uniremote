@@ -21,7 +21,8 @@ impl AuthToken {
         Self(token)
     }
 
-    /// Validate a token string against this token using constant-time comparison
+    /// Validate a token string against this token using constant-time
+    /// comparison
     pub fn validate(&self, token: &str) -> Result<(), StatusCode> {
         // Use constant-time comparison to prevent timing attacks
         if self == token {
