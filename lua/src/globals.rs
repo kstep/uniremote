@@ -1,10 +1,10 @@
 use std::path::Path;
 
-use mlua::Lua;
+use mlua::{Error, Lua};
 
-pub fn load(lua: &Lua, remote_dir: &Path) -> anyhow::Result<()> {
+pub fn load(lua: &Lua, remote_dir: &Path, remotes_dir: &Path) -> anyhow::Result<()> {
     init_global_tables(lua)?;
-    load_include(lua, remote_dir)?;
+    load_include(lua, remote_dir, remotes_dir)?;
     Ok(())
 }
 
@@ -16,31 +16,47 @@ fn init_global_tables(lua: &Lua) -> anyhow::Result<()> {
     Ok(())
 }
 
-fn load_include(lua: &Lua, remote_dir: &Path) -> anyhow::Result<()> {
-    // Clone the remote directory path to move into the closure
+fn load_include(lua: &Lua, remote_dir: &Path, remotes_dir: &Path) -> anyhow::Result<()> {
+    // Clone paths to move into the closure
     let remote_dir = remote_dir.to_path_buf();
+    let remotes_dir = remotes_dir.to_path_buf();
 
-    // Create the include function as a closure that captures remote_dir
+    // Create the include function as a closure that captures remote_dir and
+    // remotes_dir
     let include_fn = lua.create_function(move |lua, filename: String| {
         // Resolve the path relative to the remote directory
         let file_path = remote_dir.join(&filename);
 
-        // Read the file content
-        let script_content = std::fs::read(&file_path).map_err(|error| {
-            mlua::Error::runtime(format!(
-                "failed to read file '{}': {error}",
+        // Canonicalize the resolved path and check it's within the global remotes
+        // directory This prevents directory traversal attacks using .. or symlinks,
+        // and also prevents one remote from accessing another remote's files
+        let file_path_canonical = file_path.canonicalize().map_err(|error| {
+            Error::runtime(format!(
+                "failed to resolve file path '{}': {error}",
                 file_path.display()
+            ))
+        })?;
+
+        if !file_path_canonical.starts_with(&remotes_dir) {
+            return Err(Error::runtime(format!(
+                "access denied: file '{filename}' is outside the global remotes directory"
+            )));
+        }
+
+        // Read the file content
+        let script_content = std::fs::read(&file_path_canonical).map_err(|error| {
+            Error::runtime(format!(
+                "failed to read file '{}': {error}",
+                file_path_canonical.display()
             ))
         })?;
 
         // Execute the script in the current lua context
         // Use the resolved file path for better debugging information
         lua.load(script_content)
-            .set_name(file_path.display().to_string())
+            .set_name(file_path_canonical.display().to_string())
             .exec()
-            .map_err(|error| {
-                mlua::Error::runtime(format!("failed to execute included file: {error}"))
-            })?;
+            .map_err(|error| Error::runtime(format!("failed to execute included file: {error}")))?;
 
         Ok(())
     })?;
@@ -80,7 +96,7 @@ end
         let lua = Lua::new();
 
         // Load the globals
-        load(&lua, temp_path).unwrap();
+        load(&lua, temp_path, temp_path).unwrap();
 
         // Test including the common.lua file
         lua.load(
@@ -117,7 +133,7 @@ result = func_from_common("test")
         let lua = Lua::new();
 
         // Load the globals
-        load(&lua, temp_path).unwrap();
+        load(&lua, temp_path, temp_path).unwrap();
 
         // Test including a file from a subdirectory
         lua.load(
@@ -134,38 +150,45 @@ include("subdir/helper.lua")
     }
 
     #[test]
-    fn test_include_parent_directory() {
-        // Create a temporary directory structure
+    fn test_include_parent_directory_blocked() {
+        // Test that accessing parent directory is blocked for security
         let temp_dir = tempfile::tempdir().unwrap();
         let temp_path = temp_dir.path();
 
-        // Create a common.lua at the root
+        // Create a remotes directory
+        let remotes_dir = temp_path.join("remotes");
+        fs::create_dir(&remotes_dir).unwrap();
+
+        // Create a common.lua at the temp root (outside remotes)
         let common_path = temp_path.join("common.lua");
         let mut common_file = fs::File::create(&common_path).unwrap();
         writeln!(common_file, "common_loaded = true").unwrap();
 
-        // Create a subdirectory for the "remote"
-        let remote_dir = temp_path.join("my_remote");
+        // Create a subdirectory for the "remote" inside remotes
+        let remote_dir = remotes_dir.join("my_remote");
         fs::create_dir(&remote_dir).unwrap();
 
         // Create a main lua context as if we're in the subdirectory
         let lua = Lua::new();
 
         // Load the globals pointing to the remote directory
-        load(&lua, &remote_dir).unwrap();
+        // remotes_dir is the boundary - anything outside should be blocked
+        load(&lua, &remote_dir, &remotes_dir).unwrap();
 
-        // Test including a file from parent directory
-        lua.load(
-            r#"
-include("../common.lua")
+        // Test including a file from parent directory (outside remotes_dir) - should
+        // be blocked
+        let result = lua
+            .load(
+                r#"
+include("../../common.lua")
         "#,
-        )
-        .exec()
-        .unwrap();
+            )
+            .exec();
 
-        // Verify the file was loaded
-        let loaded: bool = lua.globals().get("common_loaded").unwrap();
-        assert!(loaded);
+        // Should error with access denied
+        assert!(result.is_err());
+        let error = result.unwrap_err();
+        assert!(error.to_string().contains("access denied"));
     }
 
     #[test]
@@ -174,7 +197,7 @@ include("../common.lua")
         let temp_path = temp_dir.path();
 
         let lua = Lua::new();
-        load(&lua, temp_path).unwrap();
+        load(&lua, temp_path, temp_path).unwrap();
 
         // Try to include a nonexistent file
         let result = lua
@@ -185,10 +208,15 @@ include("nonexistent.lua")
             )
             .exec();
 
-        // Should error
+        // Should error - either "failed to resolve file path" or "failed to read file"
         assert!(result.is_err());
-        let error = result.unwrap_err();
-        assert!(error.to_string().contains("failed to read file"));
+        let error_str = result.unwrap_err().to_string();
+        assert!(
+            error_str.contains("failed to resolve file path")
+                || error_str.contains("failed to read file"),
+            "Unexpected error message: {}",
+            error_str
+        );
     }
 
     #[test]
@@ -216,7 +244,7 @@ end
         lua.globals().set("actions", actions).unwrap();
 
         // Load the globals
-        load(&lua, temp_path).unwrap();
+        load(&lua, temp_path, temp_path).unwrap();
 
         // Test the example usage
         lua.load(

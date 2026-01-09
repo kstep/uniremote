@@ -75,15 +75,25 @@ This guarantees:
 
 - HTTP only (no TLS)
 - Local network only
-- No authentication (MVP)
+- Token-based authentication via HTTP-only cookies
 - REST-style API
+
+---
+
+## Security Features
+
+- **Authentication**: Random token-based auth via HTTP-only cookies
+- **Lua Sandboxing**: Memory limits (10 MB default) and instruction limits (1M default)
+- **Path Validation**: Canonicalized paths prevent directory traversal attacks
+- **CSP Headers**: Content Security Policy restricts resource loading to same-origin
+- **Constant-time Comparison**: Auth tokens compared using constant-time operations to prevent timing attacks
 
 ---
 
 ## Non-Goals (MVP)
 
 - Internet exposure
-- Authentication / authorization
+- TLS/HTTPS support
 - Touchpad / gesture streaming
 - Full Unified Remote compatibility
 - Hot reload of remotes
@@ -96,3 +106,38 @@ This guarantees:
 - Unknown layout tags are ignored with warnings
 - Lua failures do not crash the server
 - Clear separation of responsibilities per crate
+
+---
+
+## Coding Standards
+
+### String Formatting
+- **Always use variable interpolation** in `format!` strings
+- Example: `format!("text {variable}")` ✓
+- Avoid: `format!("text {}", variable)` when the variable can be named
+
+### Error Handling
+- **Use full variable names** in pattern match branches for errors
+- Example: `Err(error)` ✓
+- Avoid: `Err(e)` or `Err(_)` when the error is used
+
+### Import Style
+- **Use imports instead of fully qualified names**, unless an item is used only once
+- **Import modules** when multiple items are used from the same module
+  - Example: `use tokio::time;` then use `time::sleep()`, `time::interval()` ✓
+- **Import types directly** even when importing the module
+  - Example: `use tokio::time::{self, Duration};` ✓
+- **Keep fully qualified names** for single-use items
+  - Example: `std::fs::read()` used once ✓
+- **No need to import root crate modules** - they can be used directly with qualified names
+  - Example: Use `serde_json::json!()`, `tokio::spawn()` directly without importing ✓
+- **For name conflicts**, import modules and qualify with module names
+  - Example: If both `mlua::Result` and `anyhow::Result` are needed, import modules and use `mlua::Result` and `anyhow::Result`
+
+### Axum Route Parameters
+- **Always use `{param}` notation** for route parameters in Axum routes
+- Example: `.route("/login/{token}", get(handler))` ✓
+- Avoid: `.route("/login/:token", get(handler))` ✗ (This is Express.js/Sinatra style, not Axum)
+  
+### Rationale
+These conventions improve code readability and maintainability by making variable usage explicit and self-documenting, while reducing namespace clutter.

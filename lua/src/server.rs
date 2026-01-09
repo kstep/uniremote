@@ -1,5 +1,5 @@
 use flume::Sender;
-use mlua::{Lua, LuaSerdeExt, Table, Variadic};
+use mlua::{Error, Lua, LuaSerdeExt, Result, Table, Variadic};
 use uniremote_core::{ActionId, ServerMessage};
 
 fn get_broadcast_sender(lua: &Lua) -> Sender<ServerMessage> {
@@ -8,14 +8,14 @@ fn get_broadcast_sender(lua: &Lua) -> Sender<ServerMessage> {
         .clone()
 }
 
-fn update(lua: &Lua, updates: Variadic<Table>) -> mlua::Result<()> {
+fn update(lua: &Lua, updates: Variadic<Table>) -> Result<()> {
     let broadcast_tx = get_broadcast_sender(lua);
 
     for table in updates.iter() {
         // Extract the "id" field to use as the action
         let id: String = table
             .get("id")
-            .map_err(|_| mlua::Error::runtime("update table must have an 'id' field"))?;
+            .map_err(|_| Error::runtime("update table must have an 'id' field"))?;
 
         let action = ActionId::from(id);
 

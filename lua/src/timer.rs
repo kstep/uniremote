@@ -7,11 +7,10 @@ use std::{
 };
 
 use chrono::Utc;
-use mlua::{Function, Lua, RegistryKey, Table};
+use mlua::{Error, Function, Lua, RegistryKey, Result, Table};
 use tokio::{
     task::{JoinHandle, spawn},
-    time,
-    time::Duration,
+    time::{self, Duration},
 };
 
 static TIMER_ID_COUNTER: AtomicU64 = AtomicU64::new(1);
@@ -28,7 +27,7 @@ fn get_timer_map(lua: &Lua) -> TimerMap {
         .clone()
 }
 
-fn timeout(lua: &Lua, (callback, time_ms): (Function, u64)) -> mlua::Result<u64> {
+fn timeout(lua: &Lua, (callback, time_ms): (Function, u64)) -> Result<u64> {
     let timer_map = get_timer_map(lua);
 
     // Generate timer ID after validation
@@ -68,7 +67,7 @@ fn timeout(lua: &Lua, (callback, time_ms): (Function, u64)) -> mlua::Result<u64>
     Ok(timer_id)
 }
 
-fn interval(lua: &Lua, (callback, time_ms): (Function, u64)) -> mlua::Result<u64> {
+fn interval(lua: &Lua, (callback, time_ms): (Function, u64)) -> Result<u64> {
     let timer_map = get_timer_map(lua);
 
     // Generate timer ID after validation
@@ -117,12 +116,12 @@ fn interval(lua: &Lua, (callback, time_ms): (Function, u64)) -> mlua::Result<u64
     Ok(timer_id)
 }
 
-fn schedule(lua: &Lua, (callback, iso_time): (Function, String)) -> mlua::Result<u64> {
+fn schedule(lua: &Lua, (callback, iso_time): (Function, String)) -> Result<u64> {
     let timer_map = get_timer_map(lua);
 
     // Parse ISO 8601 timestamp
     let target_time = iso_time.parse::<chrono::DateTime<Utc>>().map_err(|error| {
-        mlua::Error::runtime(format!(
+        Error::runtime(format!(
             "failed to parse ISO 8601 time '{iso_time}': {error}"
         ))
     })?;
@@ -131,7 +130,7 @@ fn schedule(lua: &Lua, (callback, iso_time): (Function, String)) -> mlua::Result
     let duration = target_time.signed_duration_since(now);
 
     if duration.num_milliseconds() < 0 {
-        return Err(mlua::Error::runtime("scheduled time is in the past"));
+        return Err(Error::runtime("scheduled time is in the past"));
     }
 
     let delay_ms = duration.num_milliseconds() as u64;
@@ -173,7 +172,7 @@ fn schedule(lua: &Lua, (callback, iso_time): (Function, String)) -> mlua::Result
     Ok(timer_id)
 }
 
-fn cancel(lua: &Lua, timer_id: u64) -> mlua::Result<()> {
+fn cancel(lua: &Lua, timer_id: u64) -> Result<()> {
     let timer_map = get_timer_map(lua);
 
     if let Some(entry) = timer_map.lock().unwrap().remove(&timer_id) {

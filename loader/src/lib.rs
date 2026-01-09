@@ -9,6 +9,7 @@ use std::{
 use anyhow::{Context, Result};
 use uniremote_core::{Layout, PLATFORM, Platform, Remote, RemoteId, RemoteMeta};
 use uniremote_input::UInputBackend;
+pub use uniremote_lua::LuaLimits;
 use uniremote_lua::LuaState;
 use uniremote_worker::LuaWorker;
 
@@ -24,7 +25,10 @@ impl LoadedRemote {
     }
 }
 
-pub fn load_remotes(remotes_dir: PathBuf) -> anyhow::Result<HashMap<RemoteId, LoadedRemote>> {
+pub fn load_remotes(
+    remotes_dir: PathBuf,
+    lua_limits: LuaLimits,
+) -> anyhow::Result<HashMap<RemoteId, LoadedRemote>> {
     let backend = Arc::new(UInputBackend::new().context("failed to initialize input backend")?);
 
     Ok(walkdir::WalkDir::new(&remotes_dir)
@@ -32,7 +36,7 @@ pub fn load_remotes(remotes_dir: PathBuf) -> anyhow::Result<HashMap<RemoteId, Lo
         .skip(1)
         .filter_map(Result::ok)
         .filter(|entry| entry.path().is_dir())
-        .map(|entry| load_remote(&remotes_dir, entry.path(), backend.clone()))
+        .map(|entry| load_remote(&remotes_dir, entry.path(), backend.clone(), lua_limits))
         .filter_map(handle_load_error)
         .collect())
 }
@@ -52,6 +56,7 @@ fn load_remote(
     base_path: &Path,
     path: &Path,
     backend: Arc<UInputBackend>,
+    lua_limits: LuaLimits,
 ) -> Result<Option<(RemoteId, LoadedRemote)>> {
     let remote_id = RemoteId::try_from(path.strip_prefix(base_path)?)?;
 
@@ -72,7 +77,7 @@ fn load_remote(
     tracing::info!("loading remote {remote_id} from {}", path.display());
 
     let layout = load_remote_layout(path, &meta)?;
-    let lua = load_remote_script(path, &meta)?;
+    let lua = load_remote_script(base_path, path, &meta, lua_limits)?;
     let settings = load_remote_settings(path, &meta)?;
 
     lua.add_state(backend);
@@ -115,6 +120,9 @@ fn load_remote_meta(path: &Path) -> Result<Option<RemoteMeta>> {
 
 fn load_remote_layout(path: &Path, meta: &RemoteMeta) -> Result<Layout> {
     if let Some(layout_path) = resolve_platform_file(path, meta.layout.as_ref(), "layout", "xml") {
+        // Use from_reader to stream the XML without loading all into memory
+        // The deserializer trims whitespace and doesn't expand empty elements by
+        // default
         quick_xml::de::from_reader(BufReader::new(
             File::open(layout_path).context("failed to open layout file")?,
         ))
@@ -124,13 +132,18 @@ fn load_remote_layout(path: &Path, meta: &RemoteMeta) -> Result<Layout> {
     }
 }
 
-fn load_remote_script(path: &Path, meta: &RemoteMeta) -> Result<LuaState> {
+fn load_remote_script(
+    base_path: &Path,
+    path: &Path,
+    meta: &RemoteMeta,
+    lua_limits: LuaLimits,
+) -> Result<LuaState> {
     let lua = if let Some(script_path) =
         resolve_platform_file(path, meta.remote.as_ref(), "remote", "lua")
     {
-        LuaState::new(&script_path)?
+        LuaState::new(&script_path, base_path, lua_limits)?
     } else {
-        LuaState::empty()
+        LuaState::empty(lua_limits)
     };
     Ok(lua)
 }

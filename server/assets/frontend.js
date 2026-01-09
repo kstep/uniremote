@@ -1,25 +1,9 @@
-// Extract and store auth token from URL
-let authToken = null;
+// WebSocket and remote control functionality
 let ws = null;
 let wsReconnectTimer = null;
 let wsReconnectAttempts = 0;
 const WS_MAX_RECONNECT_ATTEMPTS = 5;
 const WS_RECONNECT_DELAY = 2000;
-
-function extractAuthToken() {
-    const urlParams = new URLSearchParams(window.location.search);
-    const token = urlParams.get('token');
-    if (token) {
-        authToken = token;
-        // Store in sessionStorage for persistence across page navigations
-        sessionStorage.setItem('authToken', token);
-        window.location.search = '';
-        window.history.replaceState({}, document.title, window.location.pathname);
-    } else {
-        // Try to retrieve from sessionStorage
-        authToken = sessionStorage.getItem('authToken');
-    }
-}
 
 // Extract remote ID from current URL path (/r/:id)
 function getRemoteId() {
@@ -30,8 +14,8 @@ function getRemoteId() {
 // WebSocket connection management
 function connectWebSocket() {
     const remoteId = getRemoteId();
-    if (!remoteId || !authToken) {
-        console.log('No remote ID or auth token available, skipping WebSocket connection');
+    if (!remoteId) {
+        console.log('No remote ID available, skipping WebSocket connection');
         return;
     }
 
@@ -48,8 +32,8 @@ function connectWebSocket() {
     console.log('Connecting to WebSocket:', wsUrl);
 
     try {
-        // Pass auth token via WebSocket subprotocol (bearer.{token})
-        ws = new WebSocket(wsUrl, [`bearer.${authToken}`]);
+        // Connect to WebSocket - cookies will be sent automatically
+        ws = new WebSocket(wsUrl);
 
         ws.onopen = () => {
             console.log('WebSocket connected');
@@ -152,12 +136,6 @@ function callRemoteAction(action, args = []) {
         return;
     }
 
-    if (!authToken) {
-        console.error('No auth token available');
-        showNotification('Authentication Error', 'No authentication token available. Please scan the QR code again.');
-        return;
-    }
-
     // Use WebSocket if connected, otherwise fall back to HTTP
     if (ws && ws.readyState === WebSocket.OPEN) {
         const message = {
@@ -169,8 +147,8 @@ function callRemoteAction(action, args = []) {
         try {
             ws.send(JSON.stringify(message));
             console.log('Sent action via WebSocket:', action, args);
-        } catch (e) {
-            console.error('Failed to send WebSocket message:', e);
+        } catch (error) {
+            console.error('Failed to send WebSocket message:', error);
             // Fall back to HTTP
             callRemoteActionHTTP(action, args);
         }
@@ -186,12 +164,13 @@ async function callRemoteActionHTTP(action, args = []) {
     const remoteId = getRemoteId();
     
     try {
+        // Cookies are automatically sent with fetch requests
         const response = await fetch(`/api/r/${remoteId}/call`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
-                'Authorization': `Bearer ${authToken}`,
             },
+            credentials: 'same-origin', // Ensure cookies are sent
             body: JSON.stringify({
                 action,
                 args,
@@ -206,7 +185,7 @@ async function callRemoteActionHTTP(action, args = []) {
             switch (response.status) {
                 case 401:
                     errorTitle = 'Authentication Error';
-                    errorMessage = 'Invalid or expired authentication token. Please scan the QR code again.';
+                    errorMessage = 'Authentication failed. Please scan the QR code again.';
                     break;
                 case 404:
                     errorTitle = 'Not Found';
@@ -224,7 +203,7 @@ async function callRemoteActionHTTP(action, args = []) {
                 if (errorData.message) {
                     errorMessage = errorData.message;
                 }
-            } catch (e) {
+            } catch (error) {
                 // If JSON parsing fails, use the default message from switch
             }
             
@@ -441,7 +420,6 @@ function initializeRemote() {
 
 // Initialize application
 function initialize() {
-    extractAuthToken();
     initializeRemote();
     connectWebSocket();
 }

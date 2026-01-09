@@ -1,9 +1,13 @@
 use core::fmt;
 
 use axum::http::StatusCode;
+use subtle::ConstantTimeEq;
+
+/// Cookie name for authentication
+pub const AUTH_COOKIE_NAME: &str = "uniremote_auth";
 
 /// Authentication token generated on server start
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, Eq)]
 pub struct AuthToken(String);
 
 impl AuthToken {
@@ -17,14 +21,30 @@ impl AuthToken {
         Self(token)
     }
 
-    /// Validate a token string against this token
+    /// Validate a token string against this token using constant-time
+    /// comparison
     pub fn validate(&self, token: &str) -> Result<(), StatusCode> {
-        if token == self.0 {
+        // Use constant-time comparison to prevent timing attacks
+        if self == token {
             Ok(())
         } else {
             tracing::warn!("unauthorized access attempt with invalid token");
             Err(StatusCode::UNAUTHORIZED)
         }
+    }
+}
+
+impl PartialEq for AuthToken {
+    fn eq(&self, other: &Self) -> bool {
+        // Use constant-time comparison for PartialEq as well
+        self.0.as_bytes().ct_eq(other.0.as_bytes()).into()
+    }
+}
+
+impl PartialEq<str> for AuthToken {
+    fn eq(&self, other: &str) -> bool {
+        // Use constant-time comparison to prevent timing attacks
+        self.0.as_bytes().ct_eq(other.as_bytes()).into()
     }
 }
 

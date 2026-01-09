@@ -2,7 +2,7 @@ use std::{
     fmt,
     net::{IpAddr, Ipv4Addr, SocketAddr},
     ops::Range,
-    path::PathBuf,
+    path::{Path, PathBuf},
     str::FromStr,
 };
 
@@ -13,10 +13,22 @@ use tokio::net::TcpListener;
 const DEFAULT_PORT_RANGE: Range<u16> = 8000..8101;
 
 fn default_remotes_dir() -> PathBuf {
-    xdg::BaseDirectories::with_prefix("uniremote")
+    let dir = xdg::BaseDirectories::with_prefix("uniremote")
         .get_config_home()
         .expect("missing config directory")
-        .join("remotes")
+        .join("remotes");
+
+    // Try to canonicalize the default directory, but it's okay if it doesn't exist
+    // yet since it will be created on first use. For user-provided paths via CLI,
+    // canonicalization is enforced by value_parser and will fail if the path is
+    // invalid.
+    dir.canonicalize().unwrap_or(dir)
+}
+
+fn canonicalize_path(path: &str) -> Result<PathBuf, String> {
+    Path::new(path)
+        .canonicalize()
+        .map_err(|error| format!("failed to canonicalize path: {error}"))
 }
 
 #[derive(Parser)]
@@ -42,8 +54,21 @@ pub struct Args {
     ///
     /// If not specified, uses XDG config directory
     /// (~/.config/uniremote/remotes)
-    #[arg(long, default_value_os_t = default_remotes_dir())]
+    /// The path is automatically canonicalized for security.
+    #[arg(long, default_value_os_t = default_remotes_dir(), value_parser = canonicalize_path)]
     pub remotes: PathBuf,
+
+    /// Maximum memory (in MB) that Lua scripts can use
+    ///
+    /// Default: 10 MB
+    #[arg(long, default_value_t = 10)]
+    pub lua_max_mem: usize,
+
+    /// Maximum number of instructions Lua scripts can execute
+    ///
+    /// Default: 1,000,000 instructions
+    #[arg(long, default_value_t = 1_000_000)]
+    pub lua_max_instructions: u64,
 }
 
 #[derive(Debug, Clone, Copy)]

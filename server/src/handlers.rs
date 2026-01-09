@@ -5,11 +5,11 @@ use axum::{
     body::Body,
     extract::{Path, State},
     http::StatusCode,
-    response::{Html, IntoResponse, Response},
+    response::{Html, IntoResponse, Redirect, Response},
 };
 use axum_extra::{
     TypedHeader,
-    headers::{Authorization, authorization::Bearer},
+    extract::cookie::{Cookie, CookieJar, SameSite},
 };
 use headers_accept::Accept;
 use mediatype::{
@@ -21,9 +21,27 @@ use tokio_util::io::ReaderStream;
 use uniremote_core::{CallActionRequest, RemoteId};
 use uniremote_render::{Buffer, RenderHtml};
 
-use crate::AppState;
+use crate::{AppState, auth::AUTH_COOKIE_NAME};
 
 const CONTENT_TYPE_HTML: MediaType = MediaType::from_parts(TEXT, HTML, None, &[]);
+
+pub async fn login(
+    Path(token): Path<String>,
+    State(state): State<Arc<AppState>>,
+    jar: CookieJar,
+) -> Result<(CookieJar, Redirect), StatusCode> {
+    // Validate the token
+    state.auth_token.validate(&token)?;
+
+    // Set HTTP-only cookie with auth token
+    let cookie = Cookie::build((AUTH_COOKIE_NAME, token))
+        .http_only(true)
+        .path("/")
+        .same_site(SameSite::Strict)
+        .build();
+
+    Ok((jar.add(cookie), Redirect::to("/")))
+}
 
 pub async fn list_remotes(
     State(state): State<Arc<AppState>>,
@@ -112,10 +130,16 @@ pub async fn get_remote(
 pub async fn call_remote_action(
     Path(remote_id): Path<RemoteId>,
     State(state): State<Arc<AppState>>,
-    TypedHeader(auth_header): TypedHeader<Authorization<Bearer>>,
+    jar: CookieJar,
     Json(request): Json<CallActionRequest>,
 ) -> Result<Json<serde_json::Value>, StatusCode> {
-    state.auth_token.validate(auth_header.token())?;
+    // Extract token from cookie
+    let token = jar
+        .get(AUTH_COOKIE_NAME)
+        .map(|cookie| cookie.value())
+        .ok_or(StatusCode::UNAUTHORIZED)?;
+
+    state.auth_token.validate(token)?;
 
     let remote = state.remotes.get(&remote_id).ok_or(StatusCode::NOT_FOUND)?;
 
