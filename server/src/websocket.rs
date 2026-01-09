@@ -1,7 +1,4 @@
-use std::sync::{
-    Arc,
-    atomic::{AtomicUsize, Ordering},
-};
+use std::sync::Arc;
 
 use axum::{
     extract::{
@@ -12,13 +9,12 @@ use axum::{
     response::Response,
 };
 use axum_extra::extract::cookie::CookieJar;
-use flume::Receiver;
 use futures_util::{
     sink::SinkExt,
     stream::{SplitSink, SplitStream, StreamExt},
 };
-use uniremote_core::{ClientMessage, RemoteId, ServerMessage};
-use uniremote_worker::LuaWorker;
+use uniremote_core::{ClientMessage, RemoteId};
+use uniremote_worker::{LuaWorker, Subscription};
 
 use crate::{AppState, auth::AUTH_COOKIE_NAME};
 
@@ -39,24 +35,14 @@ pub async fn websocket_handler(
     let remote = state.remotes.get(&remote_id).ok_or(StatusCode::NOT_FOUND)?;
 
     let worker = remote.worker.clone();
-    let connection_count = remote.connection_count.clone();
 
-    Ok(ws.on_upgrade(move |socket| handle_websocket(socket, worker, connection_count)))
+    Ok(ws.on_upgrade(move |socket| handle_websocket(socket, worker)))
 }
 
 async fn handle_websocket(
     socket: WebSocket,
     worker: LuaWorker,
-    connection_count: Arc<AtomicUsize>,
 ) {
-    // Increment connection count and trigger focus if this is the first connection
-    let prev_count = connection_count.fetch_add(1, Ordering::SeqCst);
-    if prev_count == 0 {
-        if let Err(error) = worker.trigger_event("focus").await {
-            tracing::warn!("failed to trigger focus event: {error}");
-        }
-    }
-
     let (tx, rx) = socket.split();
 
     let mut send_task = tokio::spawn(handle_outgoing_messages(tx, worker.subscribe()));
@@ -67,21 +53,13 @@ async fn handle_websocket(
         _ = &mut send_task => recv_task.abort(),
         _ = &mut recv_task => send_task.abort(),
     }
-
-    // Decrement connection count and trigger blur if this was the last connection
-    let new_count = connection_count.fetch_sub(1, Ordering::SeqCst) - 1;
-    if new_count == 0 {
-        if let Err(error) = worker.trigger_event("blur").await {
-            tracing::warn!("failed to trigger blur event: {error}");
-        }
-    }
 }
 
 async fn handle_outgoing_messages(
     mut sender: SplitSink<WebSocket, Message>,
-    receiver: Receiver<ServerMessage>,
+    subscription: Subscription,
 ) {
-    while let Ok(msg) = receiver.recv_async().await {
+    while let Ok(msg) = subscription.recv_async().await {
         let json = match serde_json::to_string(&msg) {
             Ok(json) => json,
             Err(error) => {

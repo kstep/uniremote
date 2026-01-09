@@ -1,6 +1,6 @@
 use std::sync::{
     Arc,
-    atomic::{AtomicBool, Ordering},
+    atomic::{AtomicBool, AtomicUsize, Ordering},
 };
 
 use anyhow::anyhow;
@@ -11,12 +11,43 @@ use uniremote_lua::LuaState;
 const CHANNEL_BUFFER_SIZE: usize = 100;
 const MAX_SEND_RETRIES: usize = 10;
 
+/// A subscription to the outbox that tracks focus/blur events
+pub struct Subscription {
+    receiver: Receiver<ServerMessage>,
+    worker: LuaWorker,
+}
+
+impl Subscription {
+    /// Receive a message from the subscription
+    pub async fn recv_async(&self) -> Result<ServerMessage, flume::RecvError> {
+        self.receiver.recv_async().await
+    }
+}
+
+impl Drop for Subscription {
+    fn drop(&mut self) {
+        // Decrement subscription count
+        let prev_count = self.worker.subscription_count.fetch_sub(1, Ordering::SeqCst);
+        
+        // If this was the last subscription, trigger blur
+        if prev_count == 1 {
+            let state = self.worker.state.clone();
+            tokio::spawn(async move {
+                if let Err(error) = state.trigger_event("blur") {
+                    tracing::warn!("failed to trigger blur event: {error}");
+                }
+            });
+        }
+    }
+}
+
 #[derive(Clone)]
 pub struct LuaWorker {
     started: Arc<AtomicBool>,
     inbox: Receiver<CallActionRequest>,
     inbox_tx: Sender<CallActionRequest>,
     outbox: Receiver<ServerMessage>,
+    subscription_count: Arc<AtomicUsize>,
     state: Arc<LuaState>,
 }
 
@@ -30,6 +61,7 @@ impl LuaWorker {
             inbox,
             inbox_tx,
             outbox,
+            subscription_count: Arc::new(AtomicUsize::new(0)),
             started: Arc::new(AtomicBool::new(false)),
             state: Arc::new(state),
         }
@@ -59,8 +91,24 @@ impl LuaWorker {
         });
     }
 
-    pub fn subscribe(&self) -> Receiver<ServerMessage> {
-        self.outbox.clone()
+    pub fn subscribe(&self) -> Subscription {
+        // Increment subscription count
+        let prev_count = self.subscription_count.fetch_add(1, Ordering::SeqCst);
+        
+        // If this is the first subscription, trigger focus
+        if prev_count == 0 {
+            let state = self.state.clone();
+            tokio::spawn(async move {
+                if let Err(error) = state.trigger_event("focus") {
+                    tracing::warn!("failed to trigger focus event: {error}");
+                }
+            });
+        }
+        
+        Subscription {
+            receiver: self.outbox.clone(),
+            worker: self.clone(),
+        }
     }
 
     pub async fn send(&self, mut request: CallActionRequest) -> anyhow::Result<()> {

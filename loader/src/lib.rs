@@ -3,7 +3,7 @@ use std::{
     fs::File,
     io::BufReader,
     path::{Path, PathBuf},
-    sync::{Arc, atomic::AtomicUsize},
+    sync::Arc,
 };
 
 use anyhow::{Context, Result};
@@ -16,7 +16,6 @@ use uniremote_worker::LuaWorker;
 pub struct LoadedRemote {
     pub remote: Remote,
     pub worker: LuaWorker,
-    pub connection_count: Arc<AtomicUsize>,
 }
 
 impl LoadedRemote {
@@ -25,7 +24,6 @@ impl LoadedRemote {
         Self {
             remote,
             worker,
-            connection_count: Arc::new(AtomicUsize::new(0)),
         }
     }
 }
