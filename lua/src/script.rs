@@ -1,38 +1,38 @@
 use std::{fs, io::Write, os::unix::fs::PermissionsExt, process::Command};
 
-use mlua::{Lua, MultiValue, Table};
+use mlua::{Error, Lua, MultiValue, Result, Table};
 
 static DEFAULT_SHELL: &str = "/bin/sh";
 static DEFAULT_OPEN_PROGRAM: &str = "xdg-open";
 
-fn throw(_lua: &Lua, message: String) -> mlua::Result<()> {
-    Err(mlua::Error::runtime(message))
+fn throw(_lua: &Lua, message: String) -> Result<()> {
+    Err(Error::runtime(message))
 }
 
-fn open(_lua: &Lua, (path, args): (String, MultiValue)) -> mlua::Result<()> {
+fn open(_lua: &Lua, (path, args): (String, MultiValue)) -> Result<()> {
     Command::new(DEFAULT_OPEN_PROGRAM)
         .arg(path)
         .args(args.iter().filter_map(|v| v.to_string().ok()))
         .status()
         .map_err(|error| {
-            mlua::Error::runtime(format_args!("failed to execute open command: {error}"))
+            Error::runtime(format_args!("failed to execute open command: {error}"))
         })?;
     Ok(())
 }
 
-fn start(_lua: &Lua, (program, args): (String, MultiValue)) -> mlua::Result<()> {
+fn start(_lua: &Lua, (program, args): (String, MultiValue)) -> Result<()> {
     Command::new(program)
         .args(args.iter().filter_map(|v| v.to_string().ok()))
         .spawn()
         .map_err(|error| {
-            mlua::Error::runtime(format_args!("failed to execute start command: {error}"))
+            Error::runtime(format_args!("failed to execute start command: {error}"))
         })?;
     Ok(())
 }
 
-fn shell(_lua: &Lua, args: MultiValue) -> mlua::Result<(String, String, i32)> {
+fn shell(_lua: &Lua, args: MultiValue) -> Result<(String, String, i32)> {
     if args.is_empty() {
-        return Err(mlua::Error::runtime("shell requires at least one argument"));
+        return Err(Error::runtime("shell requires at least one argument"));
     }
 
     let output = if args.len() == 1 {
@@ -42,17 +42,17 @@ fn shell(_lua: &Lua, args: MultiValue) -> mlua::Result<(String, String, i32)> {
             .arg(args[0].to_string()?)
             .output()
             .map_err(|error| {
-                mlua::Error::runtime(format_args!("failed to execute command: {error}"))
+                Error::runtime(format_args!("failed to execute command: {error}"))
             })?
     } else {
         // Multiple args: create temporary script
         let mut temp_file = tempfile::NamedTempFile::new().map_err(|error| {
-            mlua::Error::runtime(format_args!("failed to create temp file: {error}"))
+            Error::runtime(format_args!("failed to create temp file: {error}"))
         })?;
 
         for line in &args {
             writeln!(temp_file, "{}", line.to_string()?).map_err(|error| {
-                mlua::Error::runtime(format_args!("failed to write to temp file: {error}"))
+                Error::runtime(format_args!("failed to write to temp file: {error}"))
             })?;
         }
 
@@ -60,17 +60,17 @@ fn shell(_lua: &Lua, args: MultiValue) -> mlua::Result<(String, String, i32)> {
         let path = temp_file.path();
         let mut perms = fs::metadata(path)
             .map_err(|error| {
-                mlua::Error::runtime(format_args!("failed to get file metadata: {error}"))
+                Error::runtime(format_args!("failed to get file metadata: {error}"))
             })?
             .permissions();
         perms.set_mode(0o700);
         fs::set_permissions(path, perms).map_err(|error| {
-            mlua::Error::runtime(format_args!("failed to set permissions: {error}"))
+            Error::runtime(format_args!("failed to set permissions: {error}"))
         })?;
 
         // Execute
         Command::new(path).output().map_err(|error| {
-            mlua::Error::runtime(format_args!("failed to execute script: {error}"))
+            Error::runtime(format_args!("failed to execute script: {error}"))
         })?
 
         // temp_file is automatically deleted when it goes out of scope
@@ -78,10 +78,10 @@ fn shell(_lua: &Lua, args: MultiValue) -> mlua::Result<(String, String, i32)> {
 
     Ok((
         String::from_utf8(output.stdout).map_err(|error| {
-            mlua::Error::runtime(format_args!("failed to parse command output: {error}"))
+            Error::runtime(format_args!("failed to parse command output: {error}"))
         })?,
         String::from_utf8(output.stderr).map_err(|error| {
-            mlua::Error::runtime(format_args!(
+            Error::runtime(format_args!(
                 "failed to parse command error output: {error}"
             ))
         })?,

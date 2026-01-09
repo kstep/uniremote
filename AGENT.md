@@ -111,5 +111,18 @@ This guarantees:
 - Example: `Err(error)` ✓
 - Avoid: `Err(e)` or `Err(_)` when the error is used
 
+### Import Style
+- **Use imports instead of fully qualified names**, unless an item is used only once
+- **Import modules** when multiple items are used from the same module
+  - Example: `use tokio::time;` then use `time::sleep()`, `time::interval()` ✓
+- **Import types directly** even when importing the module
+  - Example: `use tokio::time::{self, Duration};` ✓
+- **Keep fully qualified names** for single-use items
+  - Example: `std::fs::read()` used once ✓
+- **No need to import root crate modules** - they can be used directly with qualified names
+  - Example: Use `serde_json::json!()`, `tokio::spawn()` directly without importing ✓
+- **For name conflicts**, import modules and qualify with module names
+  - Example: If both `mlua::Result` and `anyhow::Result` are needed, import modules and use `mlua::Result` and `anyhow::Result`
+  
 ### Rationale
-These conventions improve code readability and maintainability by making variable usage explicit and self-documenting.
+These conventions improve code readability and maintainability by making variable usage explicit and self-documenting, while reducing namespace clutter.

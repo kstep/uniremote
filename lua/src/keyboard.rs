@@ -1,71 +1,71 @@
-use mlua::{Lua, Table, Variadic};
+use mlua::{Error, Lua, Result, Table, Variadic};
 use uniremote_input::InputBackend;
 
 use crate::get_input_backend;
 
-fn press(lua: &Lua, keys: Variadic<String>) -> mlua::Result<()> {
+fn press(lua: &Lua, keys: Variadic<String>) -> Result<()> {
     let backend = get_input_backend(lua);
 
     for key in keys.iter() {
         tracing::info!("pressing key: {key}");
-        backend.key_click(key).map_err(mlua::Error::external)?;
+        backend.key_click(key).map_err(Error::external)?;
     }
 
     Ok(())
 }
 
-fn stroke(lua: &Lua, keys: Variadic<String>) -> mlua::Result<()> {
+fn stroke(lua: &Lua, keys: Variadic<String>) -> Result<()> {
     let backend = get_input_backend(lua);
 
     for key in keys.iter() {
         tracing::info!("stroking key: {key}");
-        backend.key_press(key).map_err(mlua::Error::external)?;
+        backend.key_press(key).map_err(Error::external)?;
     }
 
     for key in keys.iter().rev() {
-        backend.key_release(key).map_err(mlua::Error::external)?;
+        backend.key_release(key).map_err(Error::external)?;
     }
 
     Ok(())
 }
 
-fn text(_lua: &Lua, text: String) -> mlua::Result<()> {
+fn text(_lua: &Lua, text: String) -> Result<()> {
     tracing::info!("typing text: {}", text);
 
     Ok(())
 }
 
-fn down(lua: &Lua, keys: Variadic<String>) -> mlua::Result<()> {
+fn down(lua: &Lua, keys: Variadic<String>) -> Result<()> {
     let backend = get_input_backend(lua);
 
     for key in keys.iter() {
         tracing::info!("key down: {key}");
-        backend.key_press(key).map_err(mlua::Error::external)?;
+        backend.key_press(key).map_err(Error::external)?;
     }
     Ok(())
 }
 
-fn up(lua: &Lua, keys: Variadic<String>) -> mlua::Result<()> {
+fn up(lua: &Lua, keys: Variadic<String>) -> Result<()> {
     let backend = get_input_backend(lua);
 
     for key in keys.iter() {
         tracing::info!("key up: {key}");
-        backend.key_release(key).map_err(mlua::Error::external)?;
+        backend.key_release(key).map_err(Error::external)?;
     }
     Ok(())
 }
 
-fn character(_lua: &Lua, char: char) -> mlua::Result<()> {
+fn character(_lua: &Lua, char: char) -> Result<()> {
     tracing::info!("typing character: {char}");
     Ok(())
 }
 
-fn is_modifier(_lua: &Lua, key: String) -> mlua::Result<bool> {
+fn is_modifier(_lua: &Lua, key: String) -> Result<bool> {
     let modifiers = ["shift", "ctrl", "alt", "meta"];
     Ok(modifiers.contains(&key.as_str()))
 }
 
-fn is_key(lua: &Lua, key: String) -> mlua::Result<bool> {
+fn is_key(lua: &Lua, key: String) -> Result<bool> {
     let backend = get_input_backend(lua);
     Ok(backend.is_key(&key))
 }

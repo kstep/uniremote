@@ -1,88 +1,88 @@
-use mlua::{Lua, Table};
+use mlua::{Error, Lua, Result, Table};
 use uniremote_input::{InputBackend, MouseButton};
 
 use crate::get_input_backend;
 
-fn click(lua: &Lua, button: Option<String>) -> mlua::Result<()> {
+fn click(lua: &Lua, button: Option<String>) -> Result<()> {
     let button = mouse_button(button)?;
     let backend = get_input_backend(lua);
     tracing::info!("clicking mouse button: {button:?}");
     backend
         .mouse_button_click(button)
-        .map_err(mlua::Error::external)?;
+        .map_err(Error::external)?;
     Ok(())
 }
 
-fn move_to(_lua: &Lua, (x, y): (u32, u32)) -> mlua::Result<()> {
+fn move_to(_lua: &Lua, (x, y): (u32, u32)) -> Result<()> {
     tracing::info!("moving mouse to: ({x}, {y})");
     Ok(())
 }
 
-fn move_by(lua: &Lua, (dx, dy): (i32, i32)) -> mlua::Result<()> {
+fn move_by(lua: &Lua, (dx, dy): (i32, i32)) -> Result<()> {
     let backend = get_input_backend(lua);
     tracing::info!("moving mouse by: ({dx}, {dy})");
-    backend.mouse_move(dx, dy).map_err(mlua::Error::external)?;
+    backend.mouse_move(dx, dy).map_err(Error::external)?;
     Ok(())
 }
 
-fn move_raw(lua: &Lua, (dx, dy): (i32, i32)) -> mlua::Result<()> {
+fn move_raw(lua: &Lua, (dx, dy): (i32, i32)) -> Result<()> {
     let backend = get_input_backend(lua);
     tracing::info!("moving mouse raw by: ({dx}, {dy})");
-    backend.mouse_move(dx, dy).map_err(mlua::Error::external)?;
+    backend.mouse_move(dx, dy).map_err(Error::external)?;
     Ok(())
 }
 
-fn double(lua: &Lua, button: Option<String>) -> mlua::Result<()> {
+fn double(lua: &Lua, button: Option<String>) -> Result<()> {
     let button = mouse_button(button)?;
     let backend = get_input_backend(lua);
     tracing::info!("double clicking mouse button: {button:?}");
     backend
         .mouse_button_click(button)
-        .map_err(mlua::Error::external)?;
+        .map_err(Error::external)?;
     backend
         .mouse_button_click(button)
-        .map_err(mlua::Error::external)?;
+        .map_err(Error::external)?;
     Ok(())
 }
 
-fn down(lua: &Lua, button: Option<String>) -> mlua::Result<()> {
+fn down(lua: &Lua, button: Option<String>) -> Result<()> {
     let button = mouse_button(button)?;
     let backend = get_input_backend(lua);
     tracing::info!("mouse button down: {button:?}");
     backend
         .mouse_button_press(button)
-        .map_err(mlua::Error::external)?;
+        .map_err(Error::external)?;
     Ok(())
 }
 
-fn up(lua: &Lua, button: Option<String>) -> mlua::Result<()> {
+fn up(lua: &Lua, button: Option<String>) -> Result<()> {
     let button = mouse_button(button)?;
     let backend = get_input_backend(lua);
     tracing::info!("mouse button up: {button:?}");
     backend
         .mouse_button_press(button)
-        .map_err(mlua::Error::external)?;
+        .map_err(Error::external)?;
     Ok(())
 }
 
-fn vscroll(_lua: &Lua, amount: i32) -> mlua::Result<()> {
+fn vscroll(_lua: &Lua, amount: i32) -> Result<()> {
     tracing::info!("vertical scroll by: {}", amount);
     Ok(())
 }
 
-fn hscroll(_lua: &Lua, amount: i32) -> mlua::Result<()> {
+fn hscroll(_lua: &Lua, amount: i32) -> Result<()> {
     tracing::info!("horizontal scroll by: {}", amount);
     Ok(())
 }
 
-fn position(_lua: &Lua, _: ()) -> mlua::Result<(u32, u32)> {
+fn position(_lua: &Lua, _: ()) -> Result<(u32, u32)> {
     tracing::info!("getting mouse position");
     Ok((0, 0))
 }
 
-fn mouse_button(button: Option<String>) -> mlua::Result<MouseButton> {
+fn mouse_button(button: Option<String>) -> Result<MouseButton> {
     match button {
-        Some(name) => name.parse::<MouseButton>().map_err(mlua::Error::external),
+        Some(name) => name.parse::<MouseButton>().map_err(Error::external),
         None => Ok(MouseButton::Left),
     }
 }

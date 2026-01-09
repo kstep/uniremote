@@ -1,6 +1,6 @@
 use std::path::Path;
 
-use mlua::Lua;
+use mlua::{Error, Lua};
 
 pub fn load(lua: &Lua, remote_dir: &Path) -> anyhow::Result<()> {
     init_global_tables(lua)?;
@@ -27,7 +27,7 @@ fn load_include(lua: &Lua, remote_dir: &Path) -> anyhow::Result<()> {
 
         // Read the file content
         let script_content = std::fs::read(&file_path).map_err(|error| {
-            mlua::Error::runtime(format!(
+            Error::runtime(format!(
                 "failed to read file '{}': {error}",
                 file_path.display()
             ))
@@ -39,7 +39,7 @@ fn load_include(lua: &Lua, remote_dir: &Path) -> anyhow::Result<()> {
             .set_name(file_path.display().to_string())
             .exec()
             .map_err(|error| {
-                mlua::Error::runtime(format!("failed to execute included file: {error}"))
+                Error::runtime(format!("failed to execute included file: {error}"))
             })?;
 
         Ok(())
