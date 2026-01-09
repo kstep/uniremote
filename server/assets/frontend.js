@@ -185,7 +185,7 @@ async function callRemoteActionHTTP(action, args = []) {
             switch (response.status) {
                 case 401:
                     errorTitle = 'Authentication Error';
-                    errorMessage = 'Authentication failed. Please reload the page.';
+                    errorMessage = 'Authentication failed. Please scan the QR code again.';
                     break;
                 case 404:
                     errorTitle = 'Not Found';

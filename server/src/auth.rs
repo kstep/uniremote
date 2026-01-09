@@ -4,7 +4,7 @@ use axum::http::StatusCode;
 use subtle::ConstantTimeEq;
 
 /// Authentication token generated on server start
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Eq)]
 pub struct AuthToken(String);
 
 impl AuthToken {
@@ -21,9 +21,7 @@ impl AuthToken {
     /// Validate a token string against this token using constant-time comparison
     pub fn validate(&self, token: &str) -> Result<(), StatusCode> {
         // Use constant-time comparison to prevent timing attacks
-        let is_valid = self.0.as_bytes().ct_eq(token.as_bytes()).into();
-        
-        if is_valid {
+        if self == token {
             Ok(())
         } else {
             tracing::warn!("unauthorized access attempt with invalid token");
@@ -39,7 +37,12 @@ impl PartialEq for AuthToken {
     }
 }
 
-impl Eq for AuthToken {}
+impl PartialEq<str> for AuthToken {
+    fn eq(&self, other: &str) -> bool {
+        // Use constant-time comparison to prevent timing attacks
+        self.0.as_bytes().ct_eq(other.as_bytes()).into()
+    }
+}
 
 impl fmt::Display for AuthToken {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
