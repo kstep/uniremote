@@ -38,11 +38,7 @@ pub struct LuaState {
 }
 
 impl LuaState {
-    pub fn empty() -> Self {
-        Self::empty_with_limits(LuaLimits::default())
-    }
-
-    pub fn empty_with_limits(limits: LuaLimits) -> Self {
+    pub fn empty(limits: LuaLimits) -> Self {
         let lua = Lua::new();
         apply_security_limits(&lua, limits);
         LuaState { 
@@ -55,11 +51,7 @@ impl LuaState {
         self.lua.set_app_data(state);
     }
 
-    pub fn new(script: &Path) -> anyhow::Result<Self> {
-        Self::new_with_limits(script, LuaLimits::default())
-    }
-
-    pub fn new_with_limits(script: &Path, limits: LuaLimits) -> anyhow::Result<Self> {
+    pub fn new(script: &Path, limits: LuaLimits) -> anyhow::Result<Self> {
         let lua = Lua::new();
         apply_security_limits(&lua, limits);
 
@@ -193,24 +185,21 @@ fn load_modules(lua: &Lua) -> anyhow::Result<()> {
 
 /// Apply security limits to Lua VM to prevent resource exhaustion attacks
 fn apply_security_limits(lua: &Lua, limits: LuaLimits) {
-    let memory_limit_bytes = limits.memory_mb * 1024 * 1024;
-    
     // Set memory limit
-    if let Err(error) = lua.set_memory_limit(memory_limit_bytes) {
+    if let Err(error) = lua.set_memory_limit(limits.memory_mb * 1024 * 1024) {
         tracing::warn!("failed to set Lua memory limit: {error}");
     } else {
-        tracing::info!("Lua memory limit set to {} MB ({} bytes)", limits.memory_mb, memory_limit_bytes);
+        tracing::info!("lua memory limit set to {} MB ({} bytes)", limits.memory_mb, limits.memory_mb * 1024 * 1024);
     }
 
     // Set instruction count hook to limit execution
     // The counter is reset at the start of each action call
-    let instruction_limit = limits.max_instructions;
     let result = lua.set_hook(
         HookTriggers::new().every_nth_instruction(INSTRUCTION_CHECK_INTERVAL),
         move |_lua, _debug| {
             let count = INSTRUCTION_COUNTER.fetch_add(INSTRUCTION_CHECK_INTERVAL as u64, Ordering::Relaxed);
             
-            if count >= instruction_limit {
+            if count >= limits.max_instructions {
                 return Err(Error::runtime("instruction limit exceeded"));
             }
             Ok(VmState::Continue)
@@ -220,6 +209,6 @@ fn apply_security_limits(lua: &Lua, limits: LuaLimits) {
     if let Err(error) = result {
         tracing::warn!("failed to set Lua instruction limit hook: {error}");
     } else {
-        tracing::info!("Lua instruction limit set to {} instructions", limits.max_instructions);
+        tracing::info!("lua instruction limit set to {} instructions", limits.max_instructions);
     }
 }

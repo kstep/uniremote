@@ -132,9 +132,9 @@ fn load_remote_script(path: &Path, meta: &RemoteMeta, lua_limits: LuaLimits) -> 
     let lua = if let Some(script_path) =
         resolve_platform_file(path, meta.remote.as_ref(), "remote", "lua")
     {
-        LuaState::new_with_limits(&script_path, lua_limits)?
+        LuaState::new(&script_path, lua_limits)?
     } else {
-        LuaState::empty_with_limits(lua_limits)
+        LuaState::empty(lua_limits)
     };
     Ok(lua)
 }
