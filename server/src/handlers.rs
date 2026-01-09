@@ -3,9 +3,9 @@ use std::sync::Arc;
 use axum::{
     Json,
     body::Body,
-    extract::{Path, State},
+    extract::{Path, Query, State},
     http::StatusCode,
-    response::{Html, IntoResponse, Response},
+    response::{Html, IntoResponse, Redirect, Response},
 };
 use axum_extra::{
     TypedHeader,
@@ -17,6 +17,7 @@ use mediatype::{
     MediaType,
     names::{HTML, TEXT},
 };
+use serde::Deserialize;
 use tokio::fs::File;
 use tokio_util::io::ReaderStream;
 use uniremote_core::{CallActionRequest, RemoteId};
@@ -28,10 +29,33 @@ const AUTH_COOKIE_NAME: &str = "uniremote_auth";
 
 const CONTENT_TYPE_HTML: MediaType = MediaType::from_parts(TEXT, HTML, None, &[]);
 
+#[derive(Deserialize)]
+pub struct TokenQuery {
+    token: Option<String>,
+}
+
 pub async fn list_remotes(
     State(state): State<Arc<AppState>>,
     accept: Option<TypedHeader<Accept>>,
+    Query(query): Query<TokenQuery>,
+    jar: CookieJar,
 ) -> Result<Response, StatusCode> {
+    // If token is provided in query string, set cookie and redirect
+    if let Some(token) = query.token {
+        // Validate the token
+        state.auth_token.validate(&token)?;
+        
+        // Set HTTP-only cookie with auth token
+        let cookie = Cookie::build((AUTH_COOKIE_NAME, token))
+            .http_only(true)
+            .path("/")
+            .same_site(SameSite::Strict)
+            .build();
+        
+        let jar = jar.add(cookie);
+        return Ok((jar, Redirect::to("/")).into_response());
+    }
+
     let wants_html = accept.as_ref().is_some_and(|TypedHeader(accept)| {
         accept
             .media_types()
@@ -96,8 +120,7 @@ fn list_remotes_json(state: &AppState) -> Response {
 pub async fn get_remote(
     Path(remote_id): Path<RemoteId>,
     State(state): State<Arc<AppState>>,
-    jar: CookieJar,
-) -> Result<(CookieJar, Html<String>), StatusCode> {
+) -> Result<Html<String>, StatusCode> {
     let remote_with_channel = state.remotes.get(&remote_id).ok_or(StatusCode::NOT_FOUND)?;
     let remote = &remote_with_channel.remote;
 
@@ -110,17 +133,7 @@ pub async fn get_remote(
     remote.layout.render(&mut output);
     output.add_footer();
 
-    // Set HTTP-only cookie with auth token
-    // This cookie will be automatically sent with both HTTP requests and WebSocket connections
-    let cookie = Cookie::build((AUTH_COOKIE_NAME, state.auth_token.to_string()))
-        .http_only(true)
-        .path("/")
-        .same_site(SameSite::Strict)
-        .build();
-    
-    let jar = jar.add(cookie);
-
-    Ok((jar, output.into_html()))
+    Ok(output.into_html())
 }
 
 pub async fn call_remote_action(
