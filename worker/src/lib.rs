@@ -98,12 +98,9 @@ impl LuaWorker {
         
         // If this is the first subscription, trigger focus
         if prev_count == 0 {
-            let state = self.state.clone();
-            tokio::spawn(async move {
-                if let Err(error) = state.trigger_event("focus") {
-                    tracing::warn!("failed to trigger focus event: {error}");
-                }
-            });
+            if let Err(error) = self.state.trigger_event("focus") {
+                tracing::warn!("failed to trigger focus event: {error}");
+            }
         }
         
         Subscription {
