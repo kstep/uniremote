@@ -97,11 +97,10 @@ impl LuaWorker {
         let prev_count = self.subscription_count.fetch_add(1, Ordering::SeqCst);
         
         // If this is the first subscription, trigger focus
-        if prev_count == 0 {
-            if let Err(error) = self.state.trigger_event("focus") {
+        if prev_count == 0
+            && let Err(error) = self.state.trigger_event("focus") {
                 tracing::warn!("failed to trigger focus event: {error}");
             }
-        }
         
         Subscription {
             receiver: self.outbox.clone(),
