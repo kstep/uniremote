@@ -1,9 +1,8 @@
 use mlua::{Lua, Result, Table};
 use sysinfo::System;
 
-fn usage(_lua: &Lua, _: ()) -> Result<Table> {
-    let lua = _lua;
-    let mut sys = System::new_all();
+fn usage(lua: &Lua, _: ()) -> Result<Table> {
+    let mut sys = System::new();
     sys.refresh_cpu_all();
     sys.refresh_memory();
 
