@@ -6,6 +6,7 @@ use uniremote_input::UInputBackend;
 pub mod globals;
 pub mod keyboard;
 pub mod mouse;
+pub mod ps;
 pub mod script;
 pub mod server;
 pub mod state;
