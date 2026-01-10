@@ -18,7 +18,8 @@ pub struct Subscription {
 }
 
 impl Subscription {
-    /// Create a new subscription and trigger focus event if this is the first subscription
+    /// Create a new subscription and trigger focus event if this is the first
+    /// subscription
     fn new(receiver: Receiver<ServerMessage>, state: Arc<LuaState>) -> Self {
         // Check if this is the first subscription
         // After cloning, receiver_count will be at least 2 (original + this clone)
