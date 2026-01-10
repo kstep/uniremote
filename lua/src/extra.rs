@@ -4,9 +4,9 @@ use mlua::{Error, Function, Lua, MultiValue, Result, Table};
 
 static DEFAULT_OPEN_PROGRAM: &str = "xdg-open";
 
-pub fn load(lua: &Lua) -> anyhow::Result<()> {
+pub fn load(lua: &Lua, libs: &Table) -> anyhow::Result<()> {
     load_math_functions(lua)?;
-    load_os_functions(lua)?;
+    load_os_functions(lua, libs)?;
     Ok(())
 }
 
@@ -31,16 +31,13 @@ fn round(_: &Lua, (num, precision): (f64, Option<f64>)) -> mlua::Result<f64> {
     Ok(result)
 }
 
-fn get_shell_function(lua: &Lua) -> mlua::Result<Function> {
-    lua.globals()
-        .get::<Table>("libs")?
-        .get::<Table>("script")?
-        .get::<Function>("shell")
+fn get_shell_function(libs: &Table) -> mlua::Result<Function> {
+    libs.get::<Table>("script")?.get::<Function>("shell")
 }
 
-fn load_os_functions(lua: &Lua) -> anyhow::Result<()> {
+fn load_os_functions(lua: &Lua, libs: &Table) -> anyhow::Result<()> {
     let os = lua.globals().get::<Table>("os")?;
-    if let Ok(shell_fn) = get_shell_function(lua) {
+    if let Ok(shell_fn) = get_shell_function(libs) {
         os.set("script", shell_fn)?;
     }
     os.set("open", lua.create_function(open)?)?;

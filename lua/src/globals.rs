@@ -272,8 +272,9 @@ result = actions.foo()
         let temp_path = temp_dir.path();
 
         let lua = Lua::new();
+        let libs = lua.create_table().unwrap();
         load(&lua, temp_path, temp_path).unwrap();
-        crate::extra::load(&lua).unwrap();
+        crate::extra::load(&lua, &libs).unwrap();
 
         // Test rounding to nearest integer
         lua.load("result1 = math.round(10.8)").exec().unwrap();
@@ -293,8 +294,9 @@ result = actions.foo()
         let temp_path = temp_dir.path();
 
         let lua = Lua::new();
+        let libs = lua.create_table().unwrap();
         load(&lua, temp_path, temp_path).unwrap();
-        crate::extra::load(&lua).unwrap();
+        crate::extra::load(&lua, &libs).unwrap();
 
         // Test rounding with precision
         lua.load("result1 = math.round(10.006, 0.01)")

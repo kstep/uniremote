@@ -13,25 +13,43 @@ use tokio::{
     time::{self, Duration},
 };
 
-static TIMER_ID_COUNTER: AtomicU64 = AtomicU64::new(1);
-
-struct TimerEntry {
-    handle: JoinHandle<()>,
+struct TimerMap {
+    map: Mutex<HashMap<u64, JoinHandle<()>>>,
+    counter: AtomicU64,
 }
 
-type TimerMap = Arc<Mutex<HashMap<u64, TimerEntry>>>;
+impl TimerMap {
+    fn new() -> Self {
+        TimerMap {
+            map: Mutex::new(HashMap::new()),
+            counter: AtomicU64::new(1),
+        }
+    }
 
-fn get_timer_map(lua: &Lua) -> TimerMap {
-    lua.app_data_ref::<TimerMap>()
+    fn add_timer(&self, fut: impl Future<Output = ()> + Send + 'static) -> u64 {
+        let id = self.counter.fetch_add(1, Ordering::SeqCst);
+        self.map.lock().unwrap().insert(id, spawn(fut));
+        id
+    }
+
+    fn remove_timer(&self, id: u64) -> bool {
+        if let Some(handle) = self.map.lock().unwrap().remove(&id) {
+            handle.abort();
+            true
+        } else {
+            false
+        }
+    }
+}
+
+fn get_timer_map(lua: &Lua) -> Arc<TimerMap> {
+    lua.app_data_ref::<Arc<TimerMap>>()
         .expect("timer map not found in lua state")
         .clone()
 }
 
 fn timeout(lua: &Lua, (callback, time_ms): (Function, u64)) -> Result<u64> {
     let timer_map = get_timer_map(lua);
-
-    // Generate timer ID after validation
-    let timer_id = TIMER_ID_COUNTER.fetch_add(1, Ordering::SeqCst);
 
     // Create a registry key to keep the function alive
     let registry_key: RegistryKey = lua.create_registry_value(callback)?;
@@ -40,7 +58,7 @@ fn timeout(lua: &Lua, (callback, time_ms): (Function, u64)) -> Result<u64> {
     let weak_lua = lua.weak();
 
     // Spawn an async task that will execute the callback after the delay
-    let handle = spawn(async move {
+    let timer_id = timer_map.add_timer(async move {
         time::sleep(Duration::from_millis(time_ms)).await;
 
         // Try to upgrade the weak reference
@@ -57,21 +75,12 @@ fn timeout(lua: &Lua, (callback, time_ms): (Function, u64)) -> Result<u64> {
         }
     });
 
-    // Store the handle for cancellation
-    timer_map
-        .lock()
-        .unwrap()
-        .insert(timer_id, TimerEntry { handle });
-
     tracing::info!("created timeout timer with id: {timer_id}, time: {time_ms}ms");
     Ok(timer_id)
 }
 
 fn interval(lua: &Lua, (callback, time_ms): (Function, u64)) -> Result<u64> {
     let timer_map = get_timer_map(lua);
-
-    // Generate timer ID after validation
-    let timer_id = TIMER_ID_COUNTER.fetch_add(1, Ordering::SeqCst);
 
     // Create a registry key to keep the function alive
     let registry_key: RegistryKey = lua.create_registry_value(callback)?;
@@ -80,7 +89,7 @@ fn interval(lua: &Lua, (callback, time_ms): (Function, u64)) -> Result<u64> {
     let weak_lua = lua.weak();
 
     // Spawn an async task that will execute the callback repeatedly
-    let handle = spawn(async move {
+    let timer_id = timer_map.add_timer(async move {
         let mut interval = time::interval(Duration::from_millis(time_ms));
 
         loop {
@@ -106,12 +115,6 @@ fn interval(lua: &Lua, (callback, time_ms): (Function, u64)) -> Result<u64> {
         }
     });
 
-    // Store the handle for cancellation
-    timer_map
-        .lock()
-        .unwrap()
-        .insert(timer_id, TimerEntry { handle });
-
     tracing::info!("created interval timer with id: {timer_id}, time: {time_ms}ms");
     Ok(timer_id)
 }
@@ -135,9 +138,6 @@ fn schedule(lua: &Lua, (callback, iso_time): (Function, String)) -> Result<u64> 
 
     let delay_ms = duration.num_milliseconds() as u64;
 
-    // Generate timer ID after validation
-    let timer_id = TIMER_ID_COUNTER.fetch_add(1, Ordering::SeqCst);
-
     // Create a registry key to keep the function alive
     let registry_key: RegistryKey = lua.create_registry_value(callback)?;
 
@@ -145,7 +145,7 @@ fn schedule(lua: &Lua, (callback, iso_time): (Function, String)) -> Result<u64> 
     let weak_lua = lua.weak();
 
     // Spawn an async task that will execute the callback at the scheduled time
-    let handle = spawn(async move {
+    let timer_id = timer_map.add_timer(async move {
         time::sleep(Duration::from_millis(delay_ms)).await;
 
         // Try to upgrade the weak reference
@@ -162,12 +162,6 @@ fn schedule(lua: &Lua, (callback, iso_time): (Function, String)) -> Result<u64> 
         }
     });
 
-    // Store the handle for cancellation
-    timer_map
-        .lock()
-        .unwrap()
-        .insert(timer_id, TimerEntry { handle });
-
     tracing::info!("created schedule timer with id: {timer_id}, time: {iso_time}");
     Ok(timer_id)
 }
@@ -175,8 +169,7 @@ fn schedule(lua: &Lua, (callback, iso_time): (Function, String)) -> Result<u64> 
 fn cancel(lua: &Lua, timer_id: u64) -> Result<()> {
     let timer_map = get_timer_map(lua);
 
-    if let Some(entry) = timer_map.lock().unwrap().remove(&timer_id) {
-        entry.handle.abort();
+    if timer_map.remove_timer(timer_id) {
         tracing::info!("cancelled timer with id: {timer_id}");
     } else {
         tracing::warn!("attempted to cancel non-existent timer with id: {timer_id}");
@@ -186,11 +179,7 @@ fn cancel(lua: &Lua, timer_id: u64) -> Result<()> {
 }
 
 pub fn load(lua: &Lua, libs: &Table) -> anyhow::Result<()> {
-    // Initialize timer map if not already present
-    if lua.app_data_ref::<TimerMap>().is_none() {
-        let timer_map: TimerMap = Arc::new(Mutex::new(HashMap::new()));
-        lua.set_app_data(timer_map);
-    }
+    lua.set_app_data(Arc::new(TimerMap::new()));
 
     let module = lua.create_table()?;
     module.set("timeout", lua.create_function(timeout)?)?;
