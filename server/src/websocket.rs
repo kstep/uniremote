@@ -39,10 +39,7 @@ pub async fn websocket_handler(
     Ok(ws.on_upgrade(move |socket| handle_websocket(socket, worker)))
 }
 
-async fn handle_websocket(
-    socket: WebSocket,
-    worker: LuaWorker,
-) {
+async fn handle_websocket(socket: WebSocket, worker: LuaWorker) {
     let (tx, rx) = socket.split();
 
     let mut send_task = tokio::spawn(handle_outgoing_messages(tx, worker.subscribe()));

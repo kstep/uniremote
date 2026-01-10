@@ -21,10 +21,7 @@ pub struct LoadedRemote {
 impl LoadedRemote {
     pub fn new(remote: Remote, state: LuaState) -> Self {
         let worker = LuaWorker::new(state);
-        Self {
-            remote,
-            worker,
-        }
+        Self { remote, worker }
     }
 }
 
