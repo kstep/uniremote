@@ -1,6 +1,6 @@
 use std::sync::{
     Arc,
-    atomic::{AtomicBool, AtomicUsize, Ordering},
+    atomic::{AtomicBool, Ordering},
 };
 
 use anyhow::anyhow;
@@ -14,7 +14,6 @@ const MAX_SEND_RETRIES: usize = 10;
 /// A subscription to the outbox that tracks focus/blur events
 pub struct Subscription {
     receiver: Receiver<ServerMessage>,
-    subscription_count: Arc<AtomicUsize>,
     state: Arc<LuaState>,
 }
 
@@ -27,18 +26,12 @@ impl Subscription {
 
 impl Drop for Subscription {
     fn drop(&mut self) {
-        // Decrement subscription count
-        let prev_count = self.subscription_count.fetch_sub(1, Ordering::SeqCst);
-        
-        // If this was the last subscription, trigger blur
-        if prev_count == 1 {
-            let state = self.state.clone();
-            tokio::spawn(async move {
-                if let Err(error) = state.trigger_event("blur") {
-                    tracing::warn!("failed to trigger blur event: {error}");
-                }
-            });
-        }
+        // Check if this is the last receiver
+        // receiver_count() includes this receiver, so if count is 1, we're the last one
+        if self.receiver.receiver_count() == 1
+            && let Err(error) = self.state.trigger_event("blur") {
+                tracing::warn!("failed to trigger blur event: {error}");
+            }
     }
 }
 
@@ -48,7 +41,6 @@ pub struct LuaWorker {
     inbox: Receiver<CallActionRequest>,
     inbox_tx: Sender<CallActionRequest>,
     outbox: Receiver<ServerMessage>,
-    subscription_count: Arc<AtomicUsize>,
     state: Arc<LuaState>,
 }
 
@@ -62,7 +54,6 @@ impl LuaWorker {
             inbox,
             inbox_tx,
             outbox,
-            subscription_count: Arc::new(AtomicUsize::new(0)),
             started: Arc::new(AtomicBool::new(false)),
             state: Arc::new(state),
         }
@@ -93,18 +84,19 @@ impl LuaWorker {
     }
 
     pub fn subscribe(&self) -> Subscription {
-        // Increment subscription count
-        let prev_count = self.subscription_count.fetch_add(1, Ordering::SeqCst);
+        // Clone the receiver to create a new subscription
+        let receiver = self.outbox.clone();
         
-        // If this is the first subscription, trigger focus
-        if prev_count == 0
+        // Check if this is the first subscription
+        // After cloning, receiver_count will be at least 2 (original + this clone)
+        // If it's exactly 2, we're creating the first subscription
+        if receiver.receiver_count() == 2
             && let Err(error) = self.state.trigger_event("focus") {
                 tracing::warn!("failed to trigger focus event: {error}");
             }
         
         Subscription {
-            receiver: self.outbox.clone(),
-            subscription_count: self.subscription_count.clone(),
+            receiver,
             state: self.state.clone(),
         }
     }
