@@ -40,9 +40,11 @@ impl Subscription {
 
 impl Drop for Subscription {
     fn drop(&mut self) {
-        // Check if this is the last receiver
-        // receiver_count() includes this receiver, so if count is 1, we're the last one
-        if self.receiver.receiver_count() == 1
+        // Check if this is the last subscription being dropped
+        // receiver_count() still includes this receiver (drop hasn't completed yet)
+        // So if count is 2, it means: 1 master in worker + 1 this subscription
+        // After this drop completes, only the master will remain
+        if self.receiver.receiver_count() == 2
             && let Err(error) = self.state.trigger_event("blur")
         {
             tracing::warn!("failed to trigger blur event: {error}");
@@ -99,8 +101,7 @@ impl LuaWorker {
     }
 
     pub fn subscribe(&self) -> Subscription {
-        let receiver = self.outbox.clone();
-        Subscription::new(receiver, self.state.clone())
+        Subscription::new(self.outbox.clone(), self.state.clone())
     }
 
     pub async fn send(&self, mut request: CallActionRequest) -> anyhow::Result<()> {
