@@ -5,6 +5,7 @@ use std::sync::{
 
 use anyhow::anyhow;
 use flume::{Receiver, SendError, Sender};
+use tokio::{sync::Mutex, task::JoinHandle};
 use uniremote_core::{CallActionRequest, ServerMessage};
 use uniremote_lua::LuaState;
 
@@ -19,6 +20,15 @@ struct LuaWorkerInner {
     inbox: Receiver<CallActionRequest>,
     outbox: Receiver<ServerMessage>,
     state: Arc<LuaState>,
+    task: Mutex<Option<JoinHandle<()>>>,
+}
+
+impl Drop for LuaWorkerInner {
+    fn drop(&mut self) {
+        if let Some(task) = self.task.get_mut().take() {
+            task.abort();
+        }
+    }
 }
 
 #[derive(Clone)]
@@ -39,19 +49,20 @@ impl LuaWorker {
                 outbox,
                 started: AtomicBool::new(false),
                 state: Arc::new(state),
+                task: Mutex::new(None),
             }),
             sender,
         }
     }
 
-    fn start(&self) {
+    async fn start(&self) {
         if self.inner.started.swap(true, Ordering::SeqCst) {
             return;
         }
 
         let inbox = self.inner.inbox.clone();
         let state = self.inner.state.clone();
-        tokio::spawn(async move {
+        let task = tokio::spawn(async move {
             if let Err(error) = state.trigger_event("create") {
                 tracing::error!("failed to run create event handler: {error}");
             }
@@ -66,6 +77,7 @@ impl LuaWorker {
                 tracing::error!("failed to run destroy event handler: {error}");
             }
         });
+        self.inner.task.lock().await.replace(task);
     }
 
     pub fn subscribe(&self) -> Subscription {
@@ -73,7 +85,7 @@ impl LuaWorker {
     }
 
     pub async fn send(&self, mut request: CallActionRequest) -> anyhow::Result<()> {
-        self.start();
+        self.start().await;
 
         for _ in 0..MAX_SEND_RETRIES {
             request = match self.sender.send_async(request).await {
