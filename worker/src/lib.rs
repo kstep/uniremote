@@ -18,6 +18,20 @@ pub struct Subscription {
 }
 
 impl Subscription {
+    /// Create a new subscription and trigger focus event if this is the first subscription
+    fn new(receiver: Receiver<ServerMessage>, state: Arc<LuaState>) -> Self {
+        // Check if this is the first subscription
+        // After cloning, receiver_count will be at least 2 (original + this clone)
+        // If it's exactly 2, we're creating the first subscription
+        if receiver.receiver_count() == 2
+            && let Err(error) = state.trigger_event("focus")
+        {
+            tracing::warn!("failed to trigger focus event: {error}");
+        }
+
+        Self { receiver, state }
+    }
+
     /// Receive a message from the subscription
     pub async fn recv_async(&self) -> Result<ServerMessage, flume::RecvError> {
         self.receiver.recv_async().await
@@ -85,22 +99,8 @@ impl LuaWorker {
     }
 
     pub fn subscribe(&self) -> Subscription {
-        // Clone the receiver to create a new subscription
         let receiver = self.outbox.clone();
-
-        // Check if this is the first subscription
-        // After cloning, receiver_count will be at least 2 (original + this clone)
-        // If it's exactly 2, we're creating the first subscription
-        if receiver.receiver_count() == 2
-            && let Err(error) = self.state.trigger_event("focus")
-        {
-            tracing::warn!("failed to trigger focus event: {error}");
-        }
-
-        Subscription {
-            receiver,
-            state: self.state.clone(),
-        }
+        Subscription::new(receiver, self.state.clone())
     }
 
     pub async fn send(&self, mut request: CallActionRequest) -> anyhow::Result<()> {
