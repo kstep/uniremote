@@ -11,6 +11,48 @@ use uniremote_lua::LuaState;
 const CHANNEL_BUFFER_SIZE: usize = 100;
 const MAX_SEND_RETRIES: usize = 10;
 
+/// A subscription to the outbox that tracks focus/blur events
+pub struct Subscription {
+    receiver: Receiver<ServerMessage>,
+    state: Arc<LuaState>,
+}
+
+impl Subscription {
+    /// Create a new subscription and trigger focus event if this is the first
+    /// subscription
+    fn new(receiver: Receiver<ServerMessage>, state: Arc<LuaState>) -> Self {
+        // Check if this is the first subscription
+        // After cloning, receiver_count will be at least 2 (original + this clone)
+        // If it's exactly 2, we're creating the first subscription
+        if receiver.receiver_count() == 2
+            && let Err(error) = state.trigger_event("focus")
+        {
+            tracing::warn!("failed to trigger focus event: {error}");
+        }
+
+        Self { receiver, state }
+    }
+
+    /// Receive a message from the subscription
+    pub async fn recv_async(&self) -> Result<ServerMessage, flume::RecvError> {
+        self.receiver.recv_async().await
+    }
+}
+
+impl Drop for Subscription {
+    fn drop(&mut self) {
+        // Check if this is the last subscription being dropped
+        // receiver_count() still includes this receiver (drop hasn't completed yet)
+        // So if count is 2, it means: 1 master in worker + 1 this subscription
+        // After this drop completes, only the master will remain
+        if self.receiver.receiver_count() == 2
+            && let Err(error) = self.state.trigger_event("blur")
+        {
+            tracing::warn!("failed to trigger blur event: {error}");
+        }
+    }
+}
+
 #[derive(Clone)]
 pub struct LuaWorker {
     started: Arc<AtomicBool>,
@@ -59,8 +101,8 @@ impl LuaWorker {
         });
     }
 
-    pub fn subscribe(&self) -> Receiver<ServerMessage> {
-        self.outbox.clone()
+    pub fn subscribe(&self) -> Subscription {
+        Subscription::new(self.outbox.clone(), self.state.clone())
     }
 
     pub async fn send(&self, mut request: CallActionRequest) -> anyhow::Result<()> {
@@ -78,11 +120,5 @@ impl LuaWorker {
 
         tracing::error!("failed to send action request to worker after {MAX_SEND_RETRIES} retries");
         Err(anyhow!("failed to send action request to worker"))
-    }
-
-    pub async fn trigger_event(&self, event_name: &str) -> anyhow::Result<()> {
-        // Trigger the event directly on the state
-        // This is safe because we're just calling into Lua synchronously
-        self.state.trigger_event(event_name)
     }
 }
