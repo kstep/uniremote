@@ -43,7 +43,7 @@ async fn handle_websocket(socket: WebSocket, worker: LuaWorker) {
     let (tx, rx) = socket.split();
 
     let mut send_task = tokio::spawn(handle_outgoing_messages(tx, worker.subscribe()));
-    let mut recv_task = tokio::spawn(handle_incoming_messages(worker.clone(), rx));
+    let mut recv_task = tokio::spawn(handle_incoming_messages(worker, rx));
 
     // Wait for either task to finish
     tokio::select! {
@@ -56,7 +56,7 @@ async fn handle_outgoing_messages(
     mut sender: SplitSink<WebSocket, Message>,
     subscription: Subscription,
 ) {
-    while let Ok(msg) = subscription.recv_async().await {
+    while let Ok(msg) = subscription.recv().await {
         let json = match serde_json::to_string(&msg) {
             Ok(json) => json,
             Err(error) => {
