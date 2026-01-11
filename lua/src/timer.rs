@@ -13,27 +13,30 @@ use tokio::{
     time::{self, Duration},
 };
 
-struct TimerMap {
+#[derive(Clone)]
+struct TimerMap(Arc<TimerMapInner>);
+
+struct TimerMapInner {
     map: Mutex<HashMap<u64, JoinHandle<()>>>,
     counter: AtomicU64,
 }
 
 impl TimerMap {
     fn new() -> Self {
-        TimerMap {
+        Self(Arc::new(TimerMapInner {
             map: Mutex::new(HashMap::new()),
             counter: AtomicU64::new(1),
-        }
+        }))
     }
 
     fn add_timer(&self, fut: impl Future<Output = ()> + Send + 'static) -> u64 {
-        let id = self.counter.fetch_add(1, Ordering::SeqCst);
-        self.map.lock().unwrap().insert(id, spawn(fut));
+        let id = self.0.counter.fetch_add(1, Ordering::SeqCst);
+        self.0.map.lock().unwrap().insert(id, spawn(fut));
         id
     }
 
     fn remove_timer(&self, id: u64) -> bool {
-        if let Some(handle) = self.map.lock().unwrap().remove(&id) {
+        if let Some(handle) = self.0.map.lock().unwrap().remove(&id) {
             handle.abort();
             true
         } else {
@@ -42,8 +45,8 @@ impl TimerMap {
     }
 }
 
-fn get_timer_map(lua: &Lua) -> Arc<TimerMap> {
-    lua.app_data_ref::<Arc<TimerMap>>()
+fn get_timer_map(lua: &Lua) -> TimerMap {
+    lua.app_data_ref::<TimerMap>()
         .expect("timer map not found in lua state")
         .clone()
 }
@@ -179,7 +182,7 @@ fn cancel(lua: &Lua, timer_id: u64) -> Result<()> {
 }
 
 pub fn load(lua: &Lua, libs: &Table) -> anyhow::Result<()> {
-    lua.set_app_data(Arc::new(TimerMap::new()));
+    lua.set_app_data(TimerMap::new());
 
     let module = lua.create_table()?;
     module.set("timeout", lua.create_function(timeout)?)?;

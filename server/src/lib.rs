@@ -1,4 +1,4 @@
-use std::{collections::HashMap, sync::Arc};
+use std::collections::HashMap;
 
 use anyhow::Context;
 use axum::{
@@ -21,16 +21,12 @@ mod qr;
 mod websocket;
 
 pub mod args;
+pub mod state;
 
 pub use crate::args::BindAddress;
-use crate::{auth::AuthToken, qr::print_qr_code};
+use crate::{auth::AuthToken, qr::print_qr_code, state::AppState};
 
 const ASSETS_DIR: &str = "server/assets";
-
-pub struct AppState {
-    remotes: HashMap<RemoteId, LoadedRemote>,
-    auth_token: AuthToken,
-}
 
 pub async fn run(
     remotes: HashMap<RemoteId, LoadedRemote>,
@@ -48,10 +44,7 @@ pub async fn run(
 
     print_qr_code(local_addr, &auth_token);
 
-    let state = Arc::new(AppState {
-        remotes,
-        auth_token,
-    });
+    let state = AppState::new(remotes, auth_token);
 
     let cors = CorsLayer::new()
         .allow_origin(AllowOrigin::exact(origin.parse().unwrap()))
