@@ -1,5 +1,3 @@
-use std::sync::Arc;
-
 use axum::{
     Json,
     body::Body,
@@ -21,17 +19,16 @@ use tokio_util::io::ReaderStream;
 use uniremote_core::{CallActionRequest, RemoteId};
 use uniremote_render::{Buffer, RenderHtml};
 
-use crate::{AppState, auth::AUTH_COOKIE_NAME};
+use crate::{auth::AUTH_COOKIE_NAME, state::AppState};
 
 const CONTENT_TYPE_HTML: MediaType = MediaType::from_parts(TEXT, HTML, None, &[]);
 
 pub async fn login(
     Path(token): Path<String>,
-    State(state): State<Arc<AppState>>,
+    State(state): State<AppState>,
     jar: CookieJar,
 ) -> Result<(CookieJar, Redirect), StatusCode> {
-    // Validate the token
-    state.auth_token.validate(&token)?;
+    state.authenticate(&token)?;
 
     // Set HTTP-only cookie with auth token
     let cookie = Cookie::build((AUTH_COOKIE_NAME, token))
@@ -44,7 +41,7 @@ pub async fn login(
 }
 
 pub async fn list_remotes(
-    State(state): State<Arc<AppState>>,
+    State(state): State<AppState>,
     accept: Option<TypedHeader<Accept>>,
 ) -> Result<Response, StatusCode> {
     let wants_html = accept.as_ref().is_some_and(|TypedHeader(accept)| {
@@ -64,11 +61,7 @@ fn list_remotes_html(state: &AppState) -> Response {
     let mut html = Buffer::with_header();
     html.push_str(r#"<h1>Available Remotes</h1><ul class="remote-list">"#);
 
-    let mut remotes: Vec<_> = state
-        .remotes
-        .iter()
-        .map(|(id, rwc)| (id, &rwc.remote))
-        .collect();
+    let mut remotes: Vec<_> = state.remotes().map(|(id, rwc)| (id, &rwc.remote)).collect();
     remotes.sort_by(|a, b| a.1.meta.name.cmp(&b.1.meta.name));
 
     for (id, remote) in remotes {
@@ -88,11 +81,7 @@ fn list_remotes_html(state: &AppState) -> Response {
 }
 
 fn list_remotes_json(state: &AppState) -> Response {
-    let mut remotes: Vec<_> = state
-        .remotes
-        .iter()
-        .map(|(id, rwc)| (id, &rwc.remote))
-        .collect();
+    let mut remotes: Vec<_> = state.remotes().map(|(id, rwc)| (id, &rwc.remote)).collect();
     remotes.sort_by(|a, b| a.1.meta.name.cmp(&b.1.meta.name));
 
     let remotes: Vec<_> = remotes
@@ -110,13 +99,9 @@ fn list_remotes_json(state: &AppState) -> Response {
 
 pub async fn get_remote(
     Path(remote_id): Path<RemoteId>,
-    State(state): State<Arc<AppState>>,
+    State(state): State<AppState>,
 ) -> Result<Html<String>, StatusCode> {
-    let remote = &state
-        .remotes
-        .get(&remote_id)
-        .ok_or(StatusCode::NOT_FOUND)?
-        .remote;
+    let remote = &state.remote(&remote_id)?.remote;
 
     let mut output = Buffer::with_header();
 
@@ -132,7 +117,7 @@ pub async fn get_remote(
 
 pub async fn call_remote_action(
     Path(remote_id): Path<RemoteId>,
-    State(state): State<Arc<AppState>>,
+    State(state): State<AppState>,
     jar: CookieJar,
     Json(request): Json<CallActionRequest>,
 ) -> Result<Json<serde_json::Value>, StatusCode> {
@@ -142,16 +127,19 @@ pub async fn call_remote_action(
         .map(|cookie| cookie.value())
         .ok_or(StatusCode::UNAUTHORIZED)?;
 
-    state.auth_token.validate(token)?;
-
-    let remote = state.remotes.get(&remote_id).ok_or(StatusCode::NOT_FOUND)?;
+    state.authenticate(token)?;
 
     tracing::info!("call action '{}' on remote '{remote_id}'", request.action);
 
-    if let Err(error) = remote.worker.send(request).await {
-        tracing::error!("failed to send action request to worker: {error:#}");
-        return Err(StatusCode::SERVICE_UNAVAILABLE);
-    }
+    state
+        .remote(&remote_id)?
+        .worker
+        .send(request)
+        .await
+        .map_err(|error| {
+            tracing::error!("failed to send action request to worker: {error:#}");
+            StatusCode::SERVICE_UNAVAILABLE
+        })?;
 
     Ok(Json(serde_json::json!({
         "status": "pending",
@@ -160,10 +148,9 @@ pub async fn call_remote_action(
 
 pub async fn get_remote_icon(
     Path(remote_id): Path<RemoteId>,
-    State(state): State<Arc<AppState>>,
+    State(state): State<AppState>,
 ) -> Result<Response, StatusCode> {
-    let remote_with_channel = state.remotes.get(&remote_id).ok_or(StatusCode::NOT_FOUND)?;
-    let remote = &remote_with_channel.remote;
+    let remote = &state.remote(&remote_id)?.remote;
 
     // Use the resolved icon path from RemoteMeta
     let icon_path = remote.meta.resolve_icon_path(&remote.path);

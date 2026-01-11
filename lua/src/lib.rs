@@ -1,5 +1,3 @@
-use std::sync::Arc;
-
 pub use state::{LuaLimits, LuaState};
 use uniremote_input::UInputBackend;
 
@@ -13,8 +11,8 @@ pub mod server;
 pub mod state;
 pub mod timer;
 
-fn get_input_backend(lua: &mlua::Lua) -> Arc<UInputBackend> {
-    lua.app_data_ref::<Arc<UInputBackend>>()
+fn get_input_backend(lua: &mlua::Lua) -> UInputBackend {
+    lua.app_data_ref::<UInputBackend>()
         .expect("input backend not found in lua state")
         .clone()
 }

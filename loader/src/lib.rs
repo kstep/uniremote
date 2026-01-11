@@ -3,7 +3,6 @@ use std::{
     fs::File,
     io::BufReader,
     path::{Path, PathBuf},
-    sync::Arc,
 };
 
 use anyhow::{Context, Result};
@@ -29,7 +28,7 @@ pub fn load_remotes(
     remotes_dir: PathBuf,
     lua_limits: LuaLimits,
 ) -> anyhow::Result<HashMap<RemoteId, LoadedRemote>> {
-    let backend = Arc::new(UInputBackend::new().context("failed to initialize input backend")?);
+    let backend = UInputBackend::new().context("failed to initialize input backend")?;
 
     Ok(walkdir::WalkDir::new(&remotes_dir)
         .into_iter()
@@ -55,7 +54,7 @@ fn handle_load_error(
 fn load_remote(
     base_path: &Path,
     path: &Path,
-    backend: Arc<UInputBackend>,
+    backend: UInputBackend,
     lua_limits: LuaLimits,
 ) -> Result<Option<(RemoteId, LoadedRemote)>> {
     let remote_id = RemoteId::try_from(path.strip_prefix(base_path)?)?;

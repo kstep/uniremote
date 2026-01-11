@@ -1,4 +1,7 @@
-use std::{collections::HashMap, sync::Mutex};
+use std::{
+    collections::HashMap,
+    sync::{Arc, Mutex},
+};
 
 use evdev::{
     AttributeSet, EventType, InputEvent, KeyCode, RelativeAxisCode, uinput::VirtualDevice,
@@ -7,11 +10,14 @@ use unicase::UniCase;
 
 use crate::{InputBackend, InputError, MouseButton};
 
-pub struct UInputBackend {
+struct UInputBackendInner {
     keyboard_device: Mutex<VirtualDevice>,
     mouse_device: Mutex<VirtualDevice>,
     key_map: HashMap<UniCase<&'static str>, KeyCode>,
 }
+
+#[derive(Clone)]
+pub struct UInputBackend(Arc<UInputBackendInner>);
 
 impl UInputBackend {
     pub fn new() -> Result<Self, InputError> {
@@ -19,11 +25,11 @@ impl UInputBackend {
         let mouse_device = Mutex::new(Self::create_mouse_device()?);
         let key_map = Self::build_key_map();
 
-        Ok(Self {
+        Ok(Self(Arc::new(UInputBackendInner {
             keyboard_device,
             mouse_device,
             key_map,
-        })
+        })))
     }
 
     fn create_keyboard_device() -> Result<VirtualDevice, InputError> {
@@ -158,7 +164,8 @@ impl UInputBackend {
     }
 
     fn get_key(&self, key: &str) -> Result<KeyCode, InputError> {
-        self.key_map
+        self.0
+            .key_map
             .get(&UniCase::new(key))
             .copied()
             .ok_or_else(|| InputError::SendError(format!("unknown key: {key}")))
@@ -170,7 +177,8 @@ impl UInputBackend {
             InputEvent::new(EventType::SYNCHRONIZATION.0, 0, 0),
         ];
 
-        self.keyboard_device
+        self.0
+            .keyboard_device
             .lock()
             .unwrap()
             .emit(&events)
@@ -189,7 +197,8 @@ impl UInputBackend {
             InputEvent::new(EventType::SYNCHRONIZATION.0, 0, 0),
         ];
 
-        self.mouse_device
+        self.0
+            .mouse_device
             .lock()
             .unwrap()
             .emit(&events)
@@ -199,7 +208,7 @@ impl UInputBackend {
 
 impl InputBackend for UInputBackend {
     fn is_key(&self, key: &str) -> bool {
-        self.key_map.contains_key(&UniCase::new(key))
+        self.0.key_map.contains_key(&UniCase::new(key))
     }
 
     fn is_modifier(&self, key: &str) -> bool {
@@ -232,7 +241,8 @@ impl InputBackend for UInputBackend {
             InputEvent::new(EventType::SYNCHRONIZATION.0, 0, 0),
         ];
 
-        self.mouse_device
+        self.0
+            .mouse_device
             .lock()
             .unwrap()
             .emit(&events)

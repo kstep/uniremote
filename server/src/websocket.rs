@@ -1,5 +1,3 @@
-use std::sync::Arc;
-
 use axum::{
     extract::{
         Path, State, WebSocketUpgrade,
@@ -20,7 +18,7 @@ use crate::{AppState, auth::AUTH_COOKIE_NAME};
 
 pub async fn websocket_handler(
     Path(remote_id): Path<RemoteId>,
-    State(state): State<Arc<AppState>>,
+    State(state): State<AppState>,
     jar: CookieJar,
     ws: WebSocketUpgrade,
 ) -> Result<Response, StatusCode> {
@@ -30,9 +28,9 @@ pub async fn websocket_handler(
         .map(|cookie| cookie.value())
         .ok_or(StatusCode::UNAUTHORIZED)?;
 
-    state.auth_token.validate(token)?;
+    state.authenticate(token)?;
 
-    let remote = state.remotes.get(&remote_id).ok_or(StatusCode::NOT_FOUND)?;
+    let remote = state.remote(&remote_id)?;
 
     let worker = remote.worker.clone();
 
