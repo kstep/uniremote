@@ -2,6 +2,13 @@ use serde::{Deserialize, Serialize};
 
 use crate::ActionId;
 
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct CallActionRequest {
+    pub action: ActionId,
+    #[serde(default)]
+    pub args: Option<Vec<serde_json::Value>>,
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(tag = "type")]
 pub enum ServerMessage {
@@ -18,7 +25,7 @@ pub enum ServerMessage {
 #[serde(tag = "type")]
 pub enum ClientMessage {
     #[serde(rename = "call")]
-    CallAction(crate::CallActionRequest),
+    CallAction(CallActionRequest),
 }
 
 #[cfg(test)]

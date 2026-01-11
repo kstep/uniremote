@@ -112,8 +112,11 @@ pub async fn get_remote(
     Path(remote_id): Path<RemoteId>,
     State(state): State<Arc<AppState>>,
 ) -> Result<Html<String>, StatusCode> {
-    let remote_with_channel = state.remotes.get(&remote_id).ok_or(StatusCode::NOT_FOUND)?;
-    let remote = &remote_with_channel.remote;
+    let remote = &state
+        .remotes
+        .get(&remote_id)
+        .ok_or(StatusCode::NOT_FOUND)?
+        .remote;
 
     let mut output = Buffer::with_header();
 
