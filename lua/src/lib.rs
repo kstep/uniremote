@@ -2,6 +2,7 @@ pub use state::{LuaLimits, LuaState};
 use uniremote_input::UInputBackend;
 
 pub mod extra;
+pub mod fs;
 pub mod globals;
 pub mod http;
 pub mod keyboard;
