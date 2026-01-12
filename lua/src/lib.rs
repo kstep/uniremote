@@ -3,6 +3,7 @@ use uniremote_input::UInputBackend;
 
 pub mod extra;
 pub mod globals;
+pub mod http;
 pub mod keyboard;
 pub mod mouse;
 pub mod ps;

@@ -20,6 +20,7 @@ This crate implements **Lua state management and Lua libraries** for remotes.
 - libs.mouse - Mouse input simulation  
 - libs.script - OS script execution
 - libs.server - Server updates and communication
+- libs.http - HTTP requests (GET, POST, PUT, DELETE, HEAD, PATCH)
 
 No direct filesystem access beyond script execution.
 
