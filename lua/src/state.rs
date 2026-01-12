@@ -45,6 +45,10 @@ impl LuaState {
         LuaState { lua }
     }
 
+    pub fn lua(&self) -> &Lua {
+        &self.lua
+    }
+
     pub fn add_state<T: MaybeSend + 'static>(&self, state: T) {
         self.lua.set_app_data(state);
     }
@@ -59,9 +63,6 @@ impl LuaState {
             .ok_or_else(|| anyhow::anyhow!("script path has no parent directory"))?;
 
         crate::globals::load(&lua, remote_dir, remotes_dir)?;
-
-        // Set fs context with remote file and directory paths
-        crate::fs::set_context(&lua, script.to_path_buf(), remote_dir.to_path_buf());
 
         load_modules(&lua)?;
 

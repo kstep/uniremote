@@ -11,6 +11,7 @@ use mlua::{Error, Lua, Result, Table, Value};
 struct FsContext {
     remote_file: PathBuf,
     remote_dir: PathBuf,
+    working_dir: PathBuf,
 }
 
 fn get_fs_context(lua: &Lua) -> FsContext {
@@ -31,10 +32,9 @@ fn remotedir(lua: &Lua, _: ()) -> Result<String> {
     Ok(ctx.remote_dir.display().to_string())
 }
 
-fn workingdir(_lua: &Lua, _: ()) -> Result<String> {
-    std::env::current_dir()
-        .map(|p| p.display().to_string())
-        .map_err(|error| Error::runtime(format!("failed to get working directory: {error}")))
+fn workingdir(lua: &Lua, _: ()) -> Result<String> {
+    let ctx = get_fs_context(lua);
+    Ok(ctx.working_dir.display().to_string())
 }
 
 // Directory functions
@@ -693,9 +693,11 @@ pub fn load(lua: &Lua, libs: &Table) -> anyhow::Result<()> {
 }
 
 pub fn set_context(lua: &Lua, remote_file: PathBuf, remote_dir: PathBuf) {
+    let working_dir = std::env::current_dir().unwrap_or_else(|_| PathBuf::from("."));
     let context = FsContext {
         remote_file,
         remote_dir,
+        working_dir,
     };
     lua.set_app_data(context);
 }
