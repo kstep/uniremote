@@ -59,10 +59,10 @@ impl LuaState {
             .ok_or_else(|| anyhow::anyhow!("script path has no parent directory"))?;
 
         crate::globals::load(&lua, remote_dir, remotes_dir)?;
-        
+
         // Set fs context with remote file and directory paths
         crate::fs::set_context(&lua, script.to_path_buf(), remote_dir.to_path_buf());
-        
+
         load_modules(&lua)?;
 
         let script_content = std::fs::read(script)?;
