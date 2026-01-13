@@ -6,7 +6,7 @@ use std::{
 };
 
 use anyhow::{Context, Result};
-use uniremote_core::{Layout, PLATFORM, Platform, Remote, RemoteId, RemoteMeta};
+use uniremote_core::{Layout, PLATFORM, Platform, Remote, RemoteContext, RemoteId, RemoteMeta};
 use uniremote_input::UInputBackend;
 pub use uniremote_lua::LuaLimits;
 use uniremote_lua::LuaState;
@@ -133,13 +133,17 @@ fn load_remote_script(
     meta: &RemoteMeta,
     lua_limits: LuaLimits,
 ) -> Result<LuaState> {
-    let lua = if let Some(script_path) =
+    let (lua, remote_path) = if let Some(script_path) =
         resolve_platform_file(path, meta.remote.as_ref(), "remote", "lua")
     {
-        LuaState::new(&script_path, base_path, lua_limits)?
+        let state = LuaState::new(&script_path, base_path, lua_limits)?;
+        (state, script_path)
     } else {
-        LuaState::empty(lua_limits)
+        let state = LuaState::empty(lua_limits);
+        (state, path.join("remote.lua"))
     };
+    
+    state.add_state(RemoteContext::new(remote_path, path.to_path_buf());
     Ok(lua)
 }
 

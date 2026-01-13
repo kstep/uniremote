@@ -185,6 +185,7 @@ fn load_modules(lua: &Lua) -> anyhow::Result<()> {
     crate::timer::load(lua, &libs)?;
     crate::extra::load(lua, &libs)?;
     crate::http::load(lua, &libs)?;
+    crate::fs::load(lua, &libs)?;
     lua.globals().set("libs", libs)?;
     Ok(())
 }

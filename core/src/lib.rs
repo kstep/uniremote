@@ -1,3 +1,4 @@
+pub mod context;
 pub mod id;
 pub mod layout;
 pub mod message;
@@ -5,6 +6,7 @@ pub mod meta;
 
 use std::path::PathBuf;
 
+pub use context::RemoteContext;
 pub use id::{ActionId, RemoteId};
 pub use layout::Layout;
 pub use message::{CallActionRequest, ClientMessage, ServerMessage};
