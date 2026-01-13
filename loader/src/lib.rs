@@ -133,22 +133,17 @@ fn load_remote_script(
     meta: &RemoteMeta,
     lua_limits: LuaLimits,
 ) -> Result<LuaState> {
-    let lua = if let Some(script_path) =
+    let (lua, remote_path) = if let Some(script_path) =
         resolve_platform_file(path, meta.remote.as_ref(), "remote", "lua")
     {
         let state = LuaState::new(&script_path, base_path, lua_limits)?;
-        // Set remote context with script file and directory paths
-        let remote_context = RemoteContext::new(script_path.clone(), path.to_path_buf());
-        state.add_state(remote_context);
-        state
+        (state, script_path)
     } else {
         let state = LuaState::empty(lua_limits);
-        // For empty state, set remote context with dummy paths
-        let dummy_path = path.join("remote.lua");
-        let remote_context = RemoteContext::new(dummy_path, path.to_path_buf());
-        state.add_state(remote_context);
-        state
+        (state, path.join("remote.lua"))
     };
+    
+    state.add_state(RemoteContext::new(remote_path, path.to_path_buf());
     Ok(lua)
 }
 
