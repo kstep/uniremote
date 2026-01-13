@@ -6,28 +6,23 @@ use std::{
 };
 
 use mlua::{Error, Lua, Result, Table, Value};
+use uniremote_core::RemoteContext;
 
-#[derive(Clone)]
-pub struct FsContext {
-    pub remote_file: PathBuf,
-    pub remote_dir: PathBuf,
-}
-
-fn get_fs_context(lua: &Lua) -> FsContext {
-    lua.app_data_ref::<FsContext>()
-        .expect("fs context not found in lua state")
+fn get_remote_context(lua: &Lua) -> RemoteContext {
+    lua.app_data_ref::<RemoteContext>()
+        .expect("remote context not found in lua state")
         .clone()
 }
 
 // Context functions
 
 fn remotefile(lua: &Lua, _: ()) -> Result<String> {
-    let ctx = get_fs_context(lua);
+    let ctx = get_remote_context(lua);
     Ok(ctx.remote_file.display().to_string())
 }
 
 fn remotedir(lua: &Lua, _: ()) -> Result<String> {
-    let ctx = get_fs_context(lua);
+    let ctx = get_remote_context(lua);
     Ok(ctx.remote_dir.display().to_string())
 }
 
@@ -46,7 +41,7 @@ fn homedir(_lua: &Lua, _: ()) -> Result<String> {
 }
 
 fn appdir(lua: &Lua, _: ()) -> Result<String> {
-    let ctx = get_fs_context(lua);
+    let ctx = get_remote_context(lua);
     // appdir returns the server directory, which is the parent of remotes_dir
     // For now, we'll return the remote_dir's parent
     Ok(ctx
@@ -211,7 +206,7 @@ fn combine(_lua: &Lua, (a, b): (String, String)) -> Result<String> {
 }
 
 fn absolute(lua: &Lua, rel: String) -> Result<String> {
-    let ctx = get_fs_context(lua);
+    let ctx = get_remote_context(lua);
     let rel_path = Path::new(&rel);
 
     if rel_path.is_absolute() {
