@@ -8,9 +8,9 @@ use std::{
 use mlua::{Error, Lua, Result, Table, Value};
 
 #[derive(Clone)]
-struct FsContext {
-    remote_file: PathBuf,
-    remote_dir: PathBuf,
+pub struct FsContext {
+    pub remote_file: PathBuf,
+    pub remote_dir: PathBuf,
 }
 
 fn get_fs_context(lua: &Lua) -> FsContext {
@@ -672,14 +672,6 @@ pub fn load(lua: &Lua, libs: &Table) -> anyhow::Result<()> {
     libs.set("fs", &module)?;
     lua.register_module("fs", module)?;
     Ok(())
-}
-
-pub fn set_context(lua: &Lua, remote_file: PathBuf, remote_dir: PathBuf) {
-    let context = FsContext {
-        remote_file,
-        remote_dir,
-    };
-    lua.set_app_data(context);
 }
 
 #[cfg(test)]
