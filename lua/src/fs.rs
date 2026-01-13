@@ -11,7 +11,6 @@ use mlua::{Error, Lua, Result, Table, Value};
 struct FsContext {
     remote_file: PathBuf,
     remote_dir: PathBuf,
-    working_dir: PathBuf,
 }
 
 fn get_fs_context(lua: &Lua) -> FsContext {
@@ -32,9 +31,10 @@ fn remotedir(lua: &Lua, _: ()) -> Result<String> {
     Ok(ctx.remote_dir.display().to_string())
 }
 
-fn workingdir(lua: &Lua, _: ()) -> Result<String> {
-    let ctx = get_fs_context(lua);
-    Ok(ctx.working_dir.display().to_string())
+fn workingdir(_lua: &Lua, _: ()) -> Result<String> {
+    std::env::current_dir()
+        .map(|path| path.display().to_string())
+        .map_err(|error| Error::runtime(format!("failed to get working directory: {error}")))
 }
 
 // Directory functions
@@ -120,10 +120,10 @@ fn copy(_lua: &Lua, (source, destination): (String, String)) -> Result<()> {
 
     if src.is_file() {
         fs::copy(&source, &destination)
-            .map_err(|e| Error::runtime(format!("failed to copy file: {}", e)))?;
+            .map_err(|error| Error::runtime(format!("failed to copy file: {error}")))?;
     } else if src.is_dir() {
         copy_dir_all(src, dst)
-            .map_err(|e| Error::runtime(format!("failed to copy directory: {}", e)))?;
+            .map_err(|error| Error::runtime(format!("failed to copy directory: {error}")))?;
     } else {
         return Err(Error::runtime("source path does not exist"));
     }
@@ -238,25 +238,7 @@ fn temp(_lua: &Lua, _: ()) -> Result<String> {
 // Tree functions
 
 fn roots(_lua: &Lua, _: ()) -> Result<Vec<String>> {
-    let mut roots = Vec::new();
-
-    #[cfg(unix)]
-    {
-        roots.push("/".to_string());
-    }
-
-    #[cfg(windows)]
-    {
-        // On Windows, list all available drive letters
-        for letter in b'A'..=b'Z' {
-            let drive = format!("{}:\\", letter as char);
-            if Path::new(&drive).exists() {
-                roots.push(drive);
-            }
-        }
-    }
-
-    Ok(roots)
+    Ok(vec!["/".to_string()])
 }
 
 fn files(_lua: &Lua, (path, hidden): (String, Option<bool>)) -> Result<Vec<String>> {
@@ -693,11 +675,9 @@ pub fn load(lua: &Lua, libs: &Table) -> anyhow::Result<()> {
 }
 
 pub fn set_context(lua: &Lua, remote_file: PathBuf, remote_dir: PathBuf) {
-    let working_dir = std::env::current_dir().unwrap_or_else(|_| PathBuf::from("."));
     let context = FsContext {
         remote_file,
         remote_dir,
-        working_dir,
     };
     lua.set_app_data(context);
 }

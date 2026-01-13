@@ -14,7 +14,7 @@ anyhow.workspace = true
 serde.workspace = true
 tracing.workspace = true
 tokio.workspace = true
+walkdir.workspace = true
 
-walkdir = "2"
 serde-java-properties = "0.2"
 quick-xml = { version = "0.38", features = ["serialize"] }
