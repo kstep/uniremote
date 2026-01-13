@@ -6,7 +6,7 @@ use std::{
 };
 
 use anyhow::{Context, Result};
-use uniremote_core::{Layout, PLATFORM, Platform, Remote, RemoteId, RemoteMeta};
+use uniremote_core::{Layout, PLATFORM, Platform, Remote, RemoteContext, RemoteId, RemoteMeta};
 use uniremote_input::UInputBackend;
 pub use uniremote_lua::LuaLimits;
 use uniremote_lua::LuaState;
@@ -138,15 +138,14 @@ fn load_remote_script(
     {
         let state = LuaState::new(&script_path, base_path, lua_limits)?;
         // Set remote context with script file and directory paths
-        let remote_context =
-            uniremote_core::RemoteContext::new(script_path.clone(), path.to_path_buf());
+        let remote_context = RemoteContext::new(script_path.clone(), path.to_path_buf());
         state.add_state(remote_context);
         state
     } else {
         let state = LuaState::empty(lua_limits);
         // For empty state, set remote context with dummy paths
         let dummy_path = path.join("remote.lua");
-        let remote_context = uniremote_core::RemoteContext::new(dummy_path, path.to_path_buf());
+        let remote_context = RemoteContext::new(dummy_path, path.to_path_buf());
         state.add_state(remote_context);
         state
     };
