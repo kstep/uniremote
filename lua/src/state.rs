@@ -1,5 +1,5 @@
 use std::{
-    path::Path,
+    path::{Path, PathBuf},
     sync::atomic::{AtomicU64, Ordering},
 };
 
@@ -45,12 +45,12 @@ impl LuaState {
         LuaState { lua }
     }
 
-    pub fn lua(&self) -> &Lua {
-        &self.lua
-    }
-
     pub fn add_state<T: MaybeSend + 'static>(&self, state: T) {
         self.lua.set_app_data(state);
+    }
+
+    pub fn set_fs_context(&self, remote_file: PathBuf, remote_dir: PathBuf) {
+        crate::fs::set_context(&self.lua, remote_file, remote_dir);
     }
 
     pub fn new(script: &Path, remotes_dir: &Path, limits: LuaLimits) -> anyhow::Result<Self> {
